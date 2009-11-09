@@ -24,6 +24,9 @@ Dependencies
   
   * Python 2.4 or 2.5
   * docutils: http://docutils.sourceforge.net/
+  * PyMox: http://code.google.com/p/pymox/ version 0.5.1
+   * It supports easy_install so you can use: sudo easy_install mox
+  * If you're using Ubuntu you will need to install the pstats library which is in the python-profilers package.
   * Everything else should be included in the checkout :)
 
 Quickstart
