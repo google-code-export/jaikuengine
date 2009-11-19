@@ -6,18 +6,18 @@
 
 {% block logo %}
 <a href="/" id="logo">
-  <img src="/themes/{{DEFAULT_THEME|urlencode}}/logo-big.gif" height="95" width="115" alt="Jaiku" />
+  <img src="/themes/{{DEFAULT_THEME|urlencode}}/logo-big.gif" height="95" width="115" alt="{{SITE_NAME}}" />
 </a>
 {% endblock %}
 
 {% block content %}
 <div id="intro">
         <h2>Your Conversation.</h2>
-        <h1>Welcome to Jaiku!</h1>
+        <h1>Welcome to {{SITE_NAME}}!</h1>
         <ul>
             <li id="create">
                 <h3><a href="/tour">Create your activity stream</a></h3>
-                <p>Post Jaikus, add icons, customize your design, share your Web feeds</p>
+                <p>Post {{POST_NAME}}s, add icons, customize your design, share your Web feeds</p>
             </li>
             <li id="follow">
                 <h3><a href="/tour/2">Follow your friends</a></h3>

@@ -15,7 +15,11 @@
     <label for="nick"><strong>Screen name</strong></label>
     <input type="text" name="nick" id="nick" maxlength="24" class="text" value="{{nick}}"/>
     <p class="help">
+    {% ifequal SITE_NAME "Jaiku" %}
     This will be your address: jaiku.com/user/[yourname] <br />
+    {% else %}
+    This will be your address: {{DOMAIN}}/user/[yourname] <br />
+    {% endifequal %}
     Please use only letters and numbers.
     </p>
   </div>
@@ -40,7 +44,7 @@
 
   <div class="radio">
     <input type="checkbox" name="hide" id="hide"/>
-    <label for="hide">Hide my Jaikus from the public</label>
+    <label for="hide">Hide my {{POST_NAME}}s from the public</label>
 
     {{legal_html|safe}}
 
