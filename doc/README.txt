@@ -22,7 +22,7 @@ When prompted, enter your generated googlecode.com password.
 Dependencies
 ------------
   
-  * Python 2.4 or 2.5
+  * Python 2.5
   * docutils: http://docutils.sourceforge.net/
   * PyMox: http://code.google.com/p/pymox/ version 0.5.1
    * It supports easy_install so you can use: sudo easy_install mox
@@ -37,12 +37,16 @@ To get a development version running:
    1. Check out the repository (it's somewhat large due to image binaries):
   
       ``svn checkout http://jaikuengine.googlecode.com/svn/trunk/ jaikuengine``
-    
-   2. Run the server with some test data pre-loaded:
+
+   2. Generate API documentation:
+      
+      ``python manage.py build_docs``
+
+   3. Run the server with some test data pre-loaded:
 
       ``python manage.py testserver common/fixtures/*.json``
    
-   3. Browse to localhost:8080 and log in with popular/password
+   4. Browse to localhost:8080 and log in with popular/password
 
 
 To deploy to Google App Engine
@@ -95,7 +99,7 @@ If you would like to start a server that binds to all interfaces, use::
 Contributing to the project
 ---------------------------
 
-We would be happy to consider any additions or bugfixes that you would like to
+We would be happy to consider any additions or bug fixes that you would like to
 add to the helper. Please add them as a patch, in unified diff format to the
 Issue Tracker at: http://code.google.com/p/jaikuengine/issues/list
 
