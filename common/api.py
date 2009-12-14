@@ -516,15 +516,25 @@ def abuse_report_entry(api_user, nick, entry):
 def activation_activate_email(api_user, nick, code):
   activation_ref = activation_get_code(api_user, nick, 'email', code)
   if not activation_ref:
-    raise exception.ApiException('Invalid code: %s' % code)
+    raise exception.ApiNotFound('Invalid code: %s' % code)
 
+  actor_ref = actor_get(api_user, nick)
   existing_ref = actor_lookup_email(ROOT, activation_ref.content)
+  if existing_ref and existing_ref.nick == actor_ref.nick:
+    email = email_get_actor(api_user, actor_ref.nick)
+    logging.warning('%s is activating their own active email address: %s',
+                    actor_ref.nick, email)
+    relation_ref = Relation(owner=actor_ref.nick,
+                            relation='email',
+                            target=email,
+                            )
+    return relation_ref
+
   if existing_ref:
-    raise exception.ApiException(
+    raise exception.ApiAlreadyInUse(
         'Email address %s has already been activated' % activation_ref.content)
 
   # XXX begin transaction
-  actor_ref = actor_get(api_user, nick)
 
   relation_ref = email_associate(ROOT, actor_ref.nick, activation_ref.content)
   activation_ref.delete()
@@ -536,16 +546,24 @@ def activation_activate_email(api_user, nick, code):
 def activation_activate_mobile(api_user, nick, code):
   activation_ref = activation_get_code(api_user, nick, 'mobile', code)
   if not activation_ref:
-    raise exception.ApiException('Invalid code: %s' % code)
+    raise exception.ApiNotFound('Invalid code: %s' % code)
 
+  actor_ref = actor_get(api_user, nick)
   existing_ref = actor_lookup_mobile(ROOT, activation_ref.content)
+  if existing_ref and existing_ref.nick == actor_ref.nick:
+    mobile = mobile_get_actor(api_user, actor_ref.nick)
+    logging.warning('%s is activating their own active mobile number: %s',
+                    actor_ref.nick, mobile)
+    relation_ref = Relation(owner=actor_ref.nick,
+                            relation='mobile',
+                            target=mobile,
+                            )
+    return relation_ref
   if existing_ref:
-    raise exception.ApiException(
+    raise exception.ApiAlreadyInUse(
         'Mobile number %s has already been activated' % activation_ref.content)
 
   # XXX begin transaction
-  actor_ref = actor_get(api_user, nick)
-
   relation_ref = mobile_associate(ROOT, actor_ref.nick, activation_ref.content)
   activation_ref.delete()
 
@@ -554,6 +572,10 @@ def activation_activate_mobile(api_user, nick, code):
 
 @admin_required
 def activation_create(api_user, nick, type, content):
+  existing_ref = activation_get(api_user, nick, type, content)
+  if existing_ref:
+    return existing_ref
+
   activation_ref = Activation(
       actor=nick,
       content=content,
@@ -566,12 +588,24 @@ def activation_create(api_user, nick, type, content):
 @admin_required
 def activation_create_email(api_user, nick, email):
   validate.email(email)
-  validate.email_not_activated(email)
+
+  # can request an activation for an email that already exists
+  existing_ref = actor_lookup_email(ROOT, email)
+  if existing_ref:
+    raise exception.ApiAlreadyInUse(
+        "Email address is already in use: %s" % email)
+
   return activation_create(api_user, nick, 'email', email)
 
 @admin_required
 def activation_create_mobile(api_user, nick, mobile):
   clean.mobile(mobile)
+
+  # can request an activation for an email that already exists
+  existing_ref = actor_lookup_mobile(ROOT, mobile)
+  if existing_ref:
+    raise exception.ApiAlreadyInUse(
+        "Mobile number is already in use: %s" % mobile)
 
   if actor_lookup_mobile(api_user, mobile):
     raise exception.ApiException('Mobile number already in use')
@@ -585,17 +619,10 @@ def activation_get(api_user, nick, type, content):
 
 @owner_required
 def activation_get_actor_email(api_user, nick):
+  """Get a list of outstanding email activations for actor"""
   query = Activation.gql('WHERE type = :1 AND actor = :2',
                          'email',
                          nick)
-
-  activations = list(query.run())
-  return activations
-
-def activation_get_by_email(api_user, email):
-  query = Activation.gql('WHERE type = :1 AND content = :2',
-                         'email',
-                         email)
 
   activations = list(query.run())
   return activations
@@ -605,6 +632,15 @@ def activation_get_actor_mobile(api_user, nick):
   query = Activation.gql('WHERE type = :1 AND actor = :2',
                          'mobile',
                          nick)
+
+  activations = list(query.run())
+  return activations
+
+@admin_required
+def activation_get_by_email(api_user, email):
+  query = Activation.gql('WHERE type = :1 AND content = :2',
+                         'email',
+                         email)
 
   activations = list(query.run())
   return activations
@@ -636,11 +672,6 @@ def activation_request_email(api_user, nick, email):
 
   actor_ref = actor_get(api_user, nick)
 
-  # can request an activation for an email that already exists
-  existing_ref = actor_lookup_email(ROOT, email)
-  if existing_ref:
-    raise exception.ApiException("That email address is already in use")
-
   # check whether they've already tried to activate this email
   # if they have send them the same code
   # TODO(tyler): Abstract into activation_get_or_create
@@ -652,8 +683,9 @@ def activation_request_email(api_user, nick, email):
 
     activation_ref = activation_create_email(ROOT, nick, email)
 
-  subject, message, html_message = mail.email_confirmation_message(api_user,
-      activation_ref.code)
+  subject, message, html_message = mail.email_confirmation_message(
+      api_user, activation_ref.code)
+
   email_send(ROOT, email, subject, message, html_message=html_message)
   return activation_ref
 
@@ -663,11 +695,6 @@ def activation_request_mobile(api_user, nick, mobile):
   mobile = clean.mobile(mobile)
 
   actor_ref = actor_get(api_user, nick)
-
-  # can request an activation for an email that already exists
-  existing_ref = actor_lookup_mobile(ROOT, mobile)
-  if existing_ref:
-    raise exception.ApiException("That mobile number is already in use")
 
   # check whether they've already tried to activate this email
   # if they have send them the same code

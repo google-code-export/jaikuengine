@@ -25,6 +25,7 @@ from django.test import client
 
 from common import clean
 from common import memcache
+from common import megamox
 from common import profile
 from common import util
 from common.protocol import sms
@@ -41,7 +42,7 @@ class FixturesTestCase(test.TestCase):
   fixtures = ['actors', 'streams', 'contacts', 'streamentries',
               'inboxentries', 'subscriptions', 'oauthconsumers',
               'invites', 'emails', 'ims', 'activations',
-              'oauthaccesstokens']
+              'oauthaccesstokens', 'mobiles']
 
   passwords = {'obligated@example.com': 'bar',
                'popular@example.com': 'baz',
@@ -56,7 +57,7 @@ class FixturesTestCase(test.TestCase):
                'root@example.com': 'fakepassword',
                'hotness@example.com': 'fakepassword'};
   
-  __metaclass__ = mox.MoxMetaTestBase
+  __metaclass__ =  megamox.MoxMetaTestBase
 
   def setUp(self):
     settings.DEBUG = False
@@ -73,7 +74,7 @@ class FixturesTestCase(test.TestCase):
       profile.start()
 
     self.client = client.Client(SERVER_NAME=settings.DOMAIN)
-    self.mox = mox.Mox()
+    self.mox = megamox.ExtendedMox()
 
   def tearDown(self):
     if profile.PROFILE_ALL_TESTS:
@@ -83,8 +84,8 @@ class FixturesTestCase(test.TestCase):
       self.override.reset()
       del self.override
 
-    self.mox.UnsetStubs()
-    
+  def clear_cache(self):
+    memcache.client._data = {}
 
   def exhaust_queue(self, nick):
     test_util.exhaust_queue(nick)

@@ -29,6 +29,7 @@ INVALID_ARGUMENTS = 0x06
 NOT_FOUND = 0x07
 LOCKED = 0x08
 THROTTLED = 0x09
+ALREADY_IN_USE = 0x10
 
 
 def handle_exception(request):
@@ -303,3 +304,7 @@ class ApiInvalidArguments(ApiException):
 
 class ApiOAuth(ApiException):
   code = OAUTH_ERROR
+
+
+class ApiAlreadyInUse(ApiException):
+  code = ALREADY_IN_USE

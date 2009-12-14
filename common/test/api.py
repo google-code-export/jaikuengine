@@ -25,12 +25,14 @@ from django.core import mail
 from google.appengine.api import images
 
 from common import api
+from common import clean
 from common import exception
 from common import mail as common_mail
 from common import models
 from common import oauth_util
 from common import profile
 from common import util
+from common import validate
 from common.protocol import sms
 from common.test import base
 from common.test import util as test_util
@@ -224,6 +226,9 @@ class ApiUnitTest(base.FixturesTestCase):
   obligated_nick = 'obligated@example.com'
   root_nick = 'root@example.com'
   deleted_nick = 'deleted@example.com'
+  popular_mobile = '+16505551212'
+  celebrity_mobile = '+14085551212'
+  nonexist_mobile = '+19495551212'
 
   public_entry_key = 'stream/popular@example.com/presence/12345'
   private_entry_key = 'stream/girlfriend@example.com/presence/16961'
@@ -245,7 +250,10 @@ class ApiUnitTest(base.FixturesTestCase):
 
   def assertPermissions(self, access_level, func, *args, **kw):
     for current_level in api.ACCESS_LEVELS:
-      self._pre_setup()
+      if '_read_only' in kw:
+        del kw['_read_only']
+      else:
+        self._pre_setup()
       self.setUp()
 
       # stub out actor_owns_actor so that we don't get owner_required errors
@@ -297,7 +305,9 @@ class ApiUnitTest(base.FixturesTestCase):
 class AbuseUnitTest(ApiUnitTest):
   def test_perms(self):
     # basic perms
-    self.assertAdminRequired(api.abuse_get_entry, self.public_entry_key)
+    self.assertAdminRequired(api.abuse_get_entry,
+                             self.public_entry_key,
+                             _read_only=True)
     self.assertWriteRequired(api.abuse_report_entry, 
                              self.popular_nick,
                              self.public_entry_key)
@@ -317,6 +327,378 @@ class AbuseUnitTest(ApiUnitTest):
     api.abuse_report_entry(self.hermit, self.hermit_nick, self.public_entry_key)
     abuse_ref3 = api.abuse_get_entry(api.ROOT, self.public_entry_key)
     self.assertEquals(2, abuse_ref3.count)
+
+class ActivationUnitTest(ApiUnitTest):
+  def test_activate_email(self):
+    # perms
+    self.assertRaises(exception.ApiOwnerRequired, 
+                      api.activation_activate_email,
+                      self.popular,
+                      self.unpopular_nick,
+                      'BAD CODE')
+
+    # invalid code
+    self.assertRaises(exception.ApiNotFound, 
+                      api.activation_activate_email,
+                      self.popular,
+                      self.popular.nick,
+                      'BAD CODE')
+
+    # right code, wrong user
+    self.assertRaises(exception.ApiNotFound, 
+                      api.activation_activate_email,
+                      self.popular,
+                      self.popular.nick,
+                      'TESTCODE')
+    
+    # right code, right user
+    relation_ref = api.activation_activate_email(self.hermit, 
+                                                 self.hermit.nick, 
+                                                 'TESTCODE')
+    self.assertEqual(self.hermit, 
+                     api.actor_lookup_email(api.ROOT, self.hermit.nick))
+    
+    # code has been used up
+    self.assertRaises(exception.ApiNotFound, 
+                      api.activation_activate_email,
+                      self.hermit,
+                      self.hermit.nick,
+                      'TESTCODE')
+  
+    self.mox.StubOutWithMock(api, 'activation_get_code')
+    
+    # email taken stub
+    api.activation_get_code(
+        self.popular, self.popular.nick, 'email', 'ANY CODE'
+        ).AndReturn(models.Activation(actor=self.popular.nick,
+                                      type='email',
+                                      content=self.celebrity_nick))
+    
+    # email already yours stub
+    api.activation_get_code(
+        self.popular, self.popular.nick, 'email', 'ANY CODE'
+        ).AndReturn(models.Activation(actor=self.popular.nick,
+                                      type='email',
+                                      content=self.popular_nick))
+    self.mox.ReplayAll()
+
+    # email taken
+    self.assertRaises(exception.ApiAlreadyInUse, 
+                      api.activation_activate_email,
+                      self.popular,
+                      self.popular.nick,
+                      'ANY CODE')
+
+    # email already yours, if you somehow got here fake success
+    relation_ref = api.activation_activate_email(self.popular, 
+                                                 self.popular.nick,
+                                                 'ANY CODE')
+    self.assertEquals(self.popular.nick, relation_ref.target)
+
+  def test_activate_mobile(self):
+    # perms
+    self.assertRaises(exception.ApiOwnerRequired, 
+                      api.activation_activate_mobile,
+                      self.popular,
+                      self.unpopular_nick,
+                      'BAD CODE')
+
+    # invalid code
+    self.assertRaises(exception.ApiNotFound, 
+                      api.activation_activate_mobile,
+                      self.popular,
+                      self.popular.nick,
+                      'BAD CODE')
+
+    # right code, wrong user
+    self.assertRaises(exception.ApiNotFound, 
+                      api.activation_activate_mobile,
+                      self.popular,
+                      self.popular.nick,
+                      'TESTCODE')
+    
+    # right code, right user
+    relation_ref = api.activation_activate_mobile(self.hermit, 
+                                                  self.hermit.nick, 
+                                                  'TESTCODE')
+    mobile_number = '+14155551212'
+    self.assertEqual(self.hermit, 
+                     api.actor_lookup_mobile(api.ROOT, mobile_number))
+    
+    # code has been used up
+    self.assertRaises(exception.ApiNotFound, 
+                      api.activation_activate_mobile,
+                      self.hermit,
+                      self.hermit.nick,
+                      'TESTCODE')
+  
+    self.mox.StubOutWithMock(api, 'activation_get_code')
+    
+    # mobile taken stub
+    api.activation_get_code(
+        self.popular, self.popular.nick, 'mobile', 'ANY CODE'
+        ).AndReturn(models.Activation(actor=self.popular.nick,
+                                      type='mobile',
+                                      content='+14085551212'))
+    
+    # mobile already yours stub
+    api.activation_get_code(
+        self.popular, self.popular.nick, 'mobile', 'ANY CODE'
+        ).AndReturn(models.Activation(actor=self.popular.nick,
+                                      type='mobile',
+                                      content='+16505551212'))
+    self.mox.ReplayAll()
+
+    # mobile taken
+    self.assertRaises(exception.ApiAlreadyInUse, 
+                      api.activation_activate_mobile,
+                      self.popular,
+                      self.popular.nick,
+                      'ANY CODE')
+
+    # mobile already yours, if you somehow got here fake success
+    relation_ref = api.activation_activate_mobile(self.popular, 
+                                                 self.popular.nick,
+                                                 'ANY CODE')
+    self.assertEquals('+16505551212', relation_ref.target)
+    
+  def test_create_and_get(self):
+    self.assertPermissions(api.ADMIN_ACCESS, 
+                           api.activation_create,
+                           self.popular_nick,
+                           'email',
+                           self.popular_nick)
+
+    self.assertPermissions(api.ADMIN_ACCESS, 
+                           api.activation_get,
+                           self.hermit_nick,
+                           'email',
+                           self.hermit_nick,
+                           _read_only=True)
+
+    activation_ref = api.activation_create(api.ROOT, 
+                                           self.popular_nick,
+                                           'email',
+                                           self.popular_nick)
+    
+    other_ref = api.activation_get(api.ROOT, 
+                                   self.popular_nick,
+                                   'email',
+                                   self.popular_nick)
+  
+    self.assertEqual(activation_ref, other_ref)
+ 
+    # test that another create generates the same code
+    second_ref = api.activation_create(api.ROOT, 
+                                       self.popular_nick,
+                                       'email',
+                                       self.popular_nick)
+    self.assertEqual(activation_ref.code, second_ref.code)
+
+  def test_create_email(self):
+    # fail with existing
+    self.assertRaises(exception.ApiAlreadyInUse,
+                      api.activation_create_email,
+                      api.ROOT,
+                      self.popular_nick,
+                      self.popular_nick)
+    
+
+    self.mox.StubOutWithMock(validate, 'email')
+    self.mox.StubOutWithMock(api, 'activation_create')
+    
+    # make sure we validate the email
+    validate.email(self.hermit_nick)
+    
+    # make sure we call activation_create (so that all its checks are made)
+    api.activation_create(
+        api.ROOT, self.hermit_nick, 'email', self.hermit_nick
+        ).AndReturn(models.Activation(actor=self.hermit_nick,
+                                      type='email',
+                                      content=self.hermit_nick))
+
+    self.mox.ReplayAll()
+    api.activation_create_email(
+        api.ROOT, self.hermit_nick, self.hermit_nick)
+
+  def test_create_mobile(self):
+    # fail with existing
+    self.assertRaises(exception.ApiAlreadyInUse,
+                      api.activation_create_mobile,
+                      api.ROOT,
+                      self.popular_nick,
+                      self.popular_mobile)
+    
+
+    self.mox.StubOutWithMock(clean, 'mobile')
+    self.mox.StubOutWithMock(api, 'activation_create')
+    
+    # make sure we validate the mobile
+    clean.mobile(self.nonexist_mobile).Once()
+    
+    # make sure we call activation_create (so that all its checks are made)
+    api.activation_create(
+        api.ROOT, self.hermit_nick, 'mobile', self.nonexist_mobile
+        ).AndReturn(models.Activation(actor=self.hermit_nick,
+                                      type='mobile',
+                                      content=self.nonexist_mobile))
+
+    self.mox.ReplayAll()
+    api.activation_create_mobile(
+        api.ROOT, self.hermit_nick, self.nonexist_mobile)
+
+  def test_get_actor_email(self):
+    activation_ref = api.activation_create_email(api.ROOT, 
+                                                 self.popular_nick,
+                                                 self.nonexist_nick)
+    activations_ref = api.activation_get_actor_email(self.popular,
+                                                     self.popular_nick)
+    self.assertEquals(activations_ref[0], activation_ref)
+
+  def test_get_actor_mobile(self):
+    activation_ref = api.activation_create_mobile(api.ROOT, 
+                                                  self.popular_nick,
+                                                  self.nonexist_mobile)
+    activations_ref = api.activation_get_actor_mobile(self.popular,
+                                                      self.popular_nick)
+    self.assertEquals(activations_ref[0], activation_ref)
+
+  def test_get_by_email(self):
+    self.assertPermissions(api.ADMIN_ACCESS,
+                           api.activation_get_by_email,
+                           self.hermit_nick,
+                           _read_only=True)
+    # find nothing for no email-ville
+    self.assert_(not api.activation_get_by_email(api.ROOT, self.nonexist_nick))
+
+    # find something for email-ville
+    self.assert_(api.activation_get_by_email(api.ROOT, self.hermit_nick))
+
+  def test_get_code(self):
+    activation_ref = api.activation_create_email(api.ROOT,
+                                                 self.popular_nick,
+                                                 self.nonexist_nick)
+    code_ref = api.activation_get_code(self.popular,
+                                       self.popular_nick,
+                                       activation_ref.type,
+                                       activation_ref.code)
+    self.assertEquals(code_ref, activation_ref)
+
+  def test_get_email(self):
+    activation_ref = api.activation_create_email(api.ROOT,
+                                                 self.popular_nick,
+                                                 self.nonexist_nick)
+    email_ref = api.activation_get_email(api.ROOT,
+                                         self.popular_nick,
+                                         activation_ref.content)
+    self.assertEquals(email_ref, activation_ref)
+
+  def test_get_mobile(self):
+    activation_ref = api.activation_create_mobile(api.ROOT,
+                                                 self.popular_nick,
+                                                 self.nonexist_mobile)
+    mobile_ref = api.activation_get_mobile(api.ROOT,
+                                           self.popular_nick,
+                                           activation_ref.content)
+    self.assertEquals(mobile_ref, activation_ref)
+  
+  def test_request_email(self):
+    # this is a bit of an integration test and mostly replica of 
+    # activation_create stuff
+    
+    # TODO(termie): figure out a good way to test throttling
+
+    # fail with existing
+    self.assertRaises(exception.ApiAlreadyInUse,
+                      api.activation_request_email,
+                      self.popular,
+                      self.popular_nick,
+                      self.popular_nick)
+
+    # requesting multiple activations doesn't leave old ones
+    for email in [self.nonexist_nick, '1' + self.nonexist_nick]:
+      activation_ref = api.activation_request_email(self.popular,
+                                                    self.popular_nick,
+                                                    email)
+      activations_ref = api.activation_get_actor_email(api.ROOT,
+                                                       self.popular_nick)
+      self.assertEqual(len(activations_ref), 1)
+      self.assertEqual(activations_ref[0], activation_ref)
+      self.clear_cache() # reset throttling
+
+    self.mox.StubOutWithMock(api, 'activation_create_email')
+    self.mox.StubOutWithMock(common_mail, 'email_confirmation_message')
+    self.mox.StubOutWithMock(api, 'email_send')
+
+    # make sure we call activation_create_email (so that its checks are made)
+    api.activation_create_email(
+        api.ROOT, self.hermit_nick, self.nonexist_nick
+        ).AndReturn(models.Activation(actor=self.hermit_nick,
+                                      type='email',
+                                      content=self.nonexist_nick))
+    
+    common_mail.email_confirmation_message(self.hermit, mox.IgnoreArg()
+        ).AndReturn(('subject', 'message', 'html_message'))
+    
+    api.email_send(api.ROOT,
+                   self.nonexist_nick,
+                   'subject',
+                   'message',
+                   html_message='html_message'
+                   )
+
+    self.mox.ReplayAll()
+
+    api.activation_request_email(
+        self.hermit, self.hermit_nick, self.nonexist_nick)
+
+  def test_request_mobile(self):
+    # this is a bit of an integration test and mostly replica of 
+    # activation_create stuff
+    
+    # TODO(termie): figure out a good way to test throttling
+
+    # fail with existing
+    self.assertRaises(exception.ApiAlreadyInUse,
+                      api.activation_request_mobile,
+                      self.popular,
+                      self.popular_nick,
+                      self.popular_mobile)
+
+    # requesting multiple activations doesn't leave old ones
+    for mobile in [self.nonexist_mobile, self.nonexist_mobile + '1']:
+      activation_ref = api.activation_request_mobile(self.popular,
+                                                     self.popular_nick,
+                                                     mobile)
+      activations_ref = api.activation_get_actor_mobile(api.ROOT,
+                                                       self.popular_nick)
+      self.assertEqual(len(activations_ref), 1)
+      self.assertEqual(activations_ref[0], activation_ref)
+      self.clear_cache() # reset throttling
+
+    self.mox.StubOutWithMock(api, 'activation_create_mobile')
+    self.mox.StubOutWithMock(api, 'sms_send')
+
+    # make sure we call activation_create_mobile (so that its checks are made)
+    api.activation_create_mobile(
+        api.ROOT, self.hermit_nick, self.nonexist_mobile
+        ).AndReturn(models.Activation(actor=self.hermit_nick,
+                                      type='mobile',
+                                      code='SOMECODE',
+                                      content=self.nonexist_mobile))
+    
+    
+    api.sms_send(api.ROOT,
+                    self.hermit_nick,
+                    self.nonexist_mobile,
+                    mox.IgnoreArg()
+                    )
+
+    self.mox.ReplayAll()
+
+    api.activation_request_mobile(
+        self.hermit, self.hermit_nick, self.nonexist_mobile)
+
 
 
 class ApiUnitTestBasic(ApiUnitTest):
@@ -1292,20 +1674,20 @@ class ApiUnitTestActivation(ApiUnitTest):
     actor = api.actor_get(api.ROOT, self.celebrity_nick)
 
     activation_ref = api.activation_request_mobile(
-        actor, actor.nick, '+14085551212')
+        actor, actor.nick, '+19495551212')
     self.assertEqual(len(sms.outbox), 1)
 
     activations = api.activation_get_actor_mobile(api.ROOT, actor.nick)
     self.assertEqual(len(activations), 1)
 
     activation_ref = api.activation_request_mobile(
-        actor, actor.nick, '+16505551212')
+        actor, actor.nick, '+19195551212')
     activations = api.activation_get_actor_mobile(api.ROOT, actor.nick)
     self.assertEqual(len(activations), 1)
     
   def test_activation_activate_mobile(self):
     actor_ref = api.actor_get(api.ROOT, self.celebrity_nick)
-    mobile = '+14085551212'
+    mobile = '+19495551212'
     activation_ref = api.activation_request_mobile(
         actor_ref, actor_ref.nick, mobile)
     
