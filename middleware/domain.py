@@ -37,6 +37,11 @@ class DomainMiddleware(object):
     if host == settings.GAE_DOMAIN:
       return
 
+    # Queue requests seem to come in on a variety of subdomains...
+    # TODO(termie): Temporary fix
+    if request.META.get('HTTP_X_APPENGINE_QUEUENAME', None):
+      return
+
     full_url = 'http://%s%s' % (settings.DOMAIN, request.get_full_path())
     # TODO(termie): this needs to be significantly smarter, a query string
     #               breaks this immediately

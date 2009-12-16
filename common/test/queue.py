@@ -30,6 +30,8 @@ from common.test import base
 from common.test import util as test_util
 
 
+class TaskSpecTest(base.FixturesTestCase):
+  pass
 
 class QueueTest(base.FixturesTestCase):
   def setUp(self):
@@ -118,66 +120,3 @@ class QueueTest(base.FixturesTestCase):
       task_ref = api.task_get(actor_ref, nick, action, uuid)
 
     self.assertRaises(exception.ApiNotFound, _not_found)
-
-  def test_task_post(self):
-    """ test that api.post creates a task and additional calls resume
-    """
-    nick = 'popular@example.com'
-    uuid = 'HOWNOW'
-    message = 'BROWNCOW'
-
-    actor_ref = api.actor_get(api.ROOT, nick)
-
-    # DROP
-    old_max = api.MAX_FOLLOWERS_PER_INBOX
-    api.MAX_FOLLOWERS_PER_INBOX = 1
-
-    try:
-      entry_ref = api.post(actor_ref, nick=nick, uuid=uuid, message=message)
-      self.assertEqual(entry_ref.extra['title'], message)
-    
-      # make sure we can repeat
-      two_entry_ref = api.post(actor_ref, nick=nick, uuid=uuid, message=message)
-      self.assertEqual(entry_ref.uuid, two_entry_ref.uuid)
-    
-      # and that task_process_actor works
-      # and run out the queue
-      for i in range(5):
-        api.task_process_actor(api.ROOT, nick)
-    
-      self.assertRaises(exception.ApiNoTasks,
-                        lambda: api.task_process_actor(api.ROOT, nick))
-    finally:
-      api.MAX_FOLLOWERS_PER_INBOX = old_max  
-
-  def test_task_post_process_any(self):
-    """ test that api.post creates a task and additional calls resume
-    """
-    nick = 'popular@example.com'
-    uuid = 'HOWNOW'
-    message = 'BROWNCOW'
-
-    actor_ref = api.actor_get(api.ROOT, nick)
-
-    # DROP
-    old_max = api.MAX_FOLLOWERS_PER_INBOX
-    api.MAX_FOLLOWERS_PER_INBOX = 1
-
-    try:
-      entry_ref = api.post(actor_ref, nick=nick, uuid=uuid, message=message)
-      self.assertEqual(entry_ref.extra['title'], message)
-    
-      # make sure we can repeat
-      two_entry_ref = api.post(actor_ref, nick=nick, uuid=uuid, message=message)
-      self.assertEqual(entry_ref.uuid, two_entry_ref.uuid)
-    
-      # and that task_process_any works
-      # and run out the queue
-      for i in range(5):
-        api.task_process_any(api.ROOT, nick)
-      
-      self.assertRaises(exception.ApiNoTasks,
-                        lambda: api.task_process_actor(api.ROOT, nick))
-    finally:
-      api.MAX_FOLLOWERS_PER_INBOX = old_max  
-

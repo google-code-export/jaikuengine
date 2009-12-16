@@ -84,7 +84,8 @@ class NotificationsTest(ImTestCase):
     self.assertEqual(actor_last_ref.extra.get('im_notify', False), False)
 
   def test_notify_on_post(self):
-    api.post(api.ROOT, nick='popular', message='la la la')
+    actor_ref = api.actor_get(api.ROOT, 'popular')
+    api.post(actor_ref, nick='popular', message='la la la')
     self.exhaust_queue('popular')
 
     # should notify popular and unpopular

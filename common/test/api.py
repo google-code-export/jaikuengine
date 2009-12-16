@@ -1499,6 +1499,7 @@ class ApiUnitTestPrivacy(ApiUnitTest):
     entry_ref = api.post(public_actor,
                          nick=public_actor.nick,
                          message=test_message)
+    self.exhaust_queue_any()
     public_subscribers = api.subscription_get_topic(api.ROOT, public_stream)
     self.assertTrue(public_subscribers)
 

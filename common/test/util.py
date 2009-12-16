@@ -11,13 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
 
+import base64
 import datetime
 import logging
 import re
 import time as py_time
+import urlparse
+
+from google.appengine.api import apiproxy_stub_map
 
 from django.conf import settings
+from django.test import client
 
 from common import api
 from common import clock
@@ -25,6 +31,7 @@ from common import exception
 from common.protocol import sms
 from common.protocol import xmpp
 
+from api import views as api_views
 
 utcnow = lambda: clock.utcnow()
 
@@ -42,18 +49,30 @@ def get_relative_url(s):
   return m.group(2)
 
 def exhaust_queue(nick):
-  for i in xrange(1000):
-    try:
-      api.task_process_actor(api.ROOT, nick)
-    except exception.ApiNoTasks:
-      break
-    
+  exhaust_queue_any()
+
 def exhaust_queue_any():
-  for i in xrange(1000):
+  # grab the task queue stub and run all the tasks
+  queue_stub = apiproxy_stub_map.apiproxy.GetStub('taskqueue')
+  tasks = queue_stub.GetTasks('default')
+  while tasks:
+    task = tasks.pop(0)
+    body = base64.b64decode(task['body'])
+    params = dict(urlparse.parse_qsl(body, keep_blank_values=True))
+    logging.debug('body %s', params)
+
     try:
-      api.task_process_any(api.ROOT)
-    except exception.ApiNoTasks:
-      break
+      l = override(DOMAIN='testserver')
+      test_client = client.Client()
+      rv = test_client.post('/_ah/queue/default',
+                            params)
+      l.reset()
+      queue_stub.DeleteTask('default', task['name'])
+    except Exception:
+      logging.exception('Woops!')
+
+    tasks = queue_stub.GetTasks('default')
+
 
 class TestXmppConnection(xmpp.XmppConnection):
   def send_message(self, to_jid_list, message, html_message=None, 

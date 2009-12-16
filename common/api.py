@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
-import re
+import base64
 import datetime
 import logging
+import random
+import re
+try:
+  import cPickle as pickle
+except ImportError:
+  import pickle
 
 from cleanliness import cleaner
+import simplejson
 
 from django import template
 from django.conf import settings
@@ -25,6 +31,7 @@ from django.conf import settings
 from google.appengine.ext import db
 from google.appengine.api import urlfetch
 from google.appengine.api import images
+from google.appengine.api.labs import taskqueue
 
 from common.models import Stream, StreamEntry, InboxEntry, Actor, Relation
 from common.models import Subscription, Invite, OAuthConsumer, OAuthRequestToken
@@ -85,8 +92,8 @@ DEFAULT_TASK_EXPIRE = 10
 # The maximum number of followers to process per task iteration of inboxes
 MAX_FOLLOWERS_PER_INBOX = 100
 
-MAX_NOTIFICATIONS_PER_TASK = 100
 # The maximum number of followers we can notify per task iteration
+MAX_NOTIFICATIONS_PER_TASK = 100
 
 # The first notification type to handle
 FIRST_NOTIFICATION_TYPE = 'im'
@@ -942,6 +949,9 @@ def actor_get(api_user, nick):
   if actor_ref.is_deleted():
     raise exception.ApiDeleted(not_found_message)
   
+  if actor_ref.nick == ROOT.nick:
+    actor_ref.access_level = ADMIN_ACCESS
+
   if actor_can_view_actor(api_user, actor_ref):
     return ResultWrapper(actor_ref, actor=actor_ref)
 
@@ -1792,15 +1802,15 @@ def entry_add_comment(api_user, _task_ref=None, **kw):
   except exception.ValidationError, e:
     raise exception.ApiException(e.user_message)
 
-  if settings.QUEUE_ENABLED:
-    task_ref = _task_ref
-    if not task_ref:
-      kw['uuid'] = uuid
-      task_ref = task_get_or_create(api_user,
-                                    nick,
-                                    'entry_add_comment',
-                                    uuid,
-                                    kw=kw)
+  task_ref = _task_ref
+  if not task_ref:
+    kw['uuid'] = uuid
+    task_ref = Task(actor=api_user.nick,
+                    action='entry_add_comment',
+                    action_id=uuid,
+                    progress='',
+                    args=[],
+                    kw=kw)
 
   actor_ref = actor_get(api_user, nick)
   comment_stream_ref = stream_get_comment(api_user, actor_ref.nick)
@@ -1821,34 +1831,18 @@ def entry_add_comment(api_user, _task_ref=None, **kw):
                       },
             }
 
-  if settings.QUEUE_ENABLED:
-    try:
-      comment_ref = _process_new_entry_with_progress(
-          task_ref, 
-          actor_ref, 
-          new_stream_ref=comment_stream_ref,
-          entry_stream_ref=stream_ref,
-          entry_ref=entry_ref,
-          new_values=values
-          )
-    except exception.ApiException:
-      # Something is wrong, bail out and delete the task
-      task_ref.delete()
-      raise
-  else:
-    comment_ref = _add_entry(comment_stream_ref, 
-                             new_values=values, 
-                             entry_ref=entry_ref)
-    subscribers = _subscribers_for_comment(comment_stream_ref, stream_ref,
-                                           entry_ref, comment_ref)
-    inboxes = _add_inboxes_for_entry(subscribers, comment_stream_ref,
-                                     comment_ref)
+  try:
+    task_spec = AddEntryTaskSpec(task_ref, 
+                                 actor_ref=actor_ref, 
+                                 new_stream_ref=comment_stream_ref,
+                                 new_values=values, 
+                                 entry_ref=entry_ref, 
+                                 entry_stream_ref=stream_ref)
+    comment_ref = task_spec.process()
+  except exception.ApiException:
+    # Something is wrong, bail out
+    raise
 
-
-
-
-
-    _notify_subscribers_for_comment(actor_ref, comment_ref, entry_ref)
   return ResultWrapper(comment_ref, comment=comment_ref)
 
 def entry_add_comment_with_entry_uuid(api_user, **kw):
@@ -2734,15 +2728,15 @@ def post(api_user, _task_ref=None, **kw):
     # update presence only
     return
   
-  if settings.QUEUE_ENABLED:
-    task_ref = _task_ref
-    if not task_ref:
-      kw['uuid'] = uuid
-      task_ref = task_get_or_create(api_user,
-                                    nick,
-                                    'post',
-                                    uuid,
-                                    kw=kw)
+  task_ref = _task_ref
+  if not task_ref:
+    kw['uuid'] = uuid
+    task_ref = Task(actor=api_user.nick,
+                    action='post',
+                    action_id=uuid,
+                    progress='',
+                    args=[],
+                    kw=kw)
 
 
   # we've decided this is a presence update
@@ -2760,25 +2754,17 @@ def post(api_user, _task_ref=None, **kw):
     'extra': extra
   }
 
-  if settings.QUEUE_ENABLED:
-    try:
-      entry_ref = _process_new_entry_with_progress(
-          task_ref, actor_ref, stream_ref, values)
-    except exception.ApiException:
-      # Something is wrong, bail out and delete the task
-      task_ref.delete()
-      raise
-  else:
-    # XXX start transaction
-    #presence = _set_presence(**values)
-    entry_ref = _add_entry(stream_ref, new_values=values)
-    subscribers = _subscribers_for_entry(stream_ref, entry_ref)
-    inboxes = _add_inboxes_for_entry(subscribers, stream_ref, entry_ref)
-    _notify_subscribers_for_entry(subscribers, 
-                                  actor_ref, 
-                                  stream_ref, 
-                                  entry_ref)
-    # XXX end transaction
+  try:
+    task_spec = AddEntryTaskSpec(task_ref, 
+                                 actor_ref=actor_ref, 
+                                 new_stream_ref=stream_ref,
+                                 new_values=values, 
+                                 entry_ref=None, 
+                                 entry_stream_ref=None)
+    entry_ref = task_spec.process()
+  except exception.ApiException:
+    # Something is wrong, bail out and delete the task
+    raise
 
   return entry_ref
 
@@ -2906,37 +2892,41 @@ def presence_set(api_user, nick, **kw):
 @owner_required
 def task_create(api_user, nick, action, action_id, args=None, kw=None, 
                 progress=None, expire=None):
+  logging.warning('task_create is deprecated')
   if args is None:
     args = []
   if kw is None:
     kw = {}
   
-  key_name = Task.key_from(actor=nick, action=action, action_id=action_id)
+  key_name = models.Task.key_from(
+      actor=nick, action=action, action_id=action_id)
 
   if expire:
     locked = memcache.client.add(key_name, 'owned', time=expire)
     if not locked:
       raise exception.ApiLocked("Lock could not be acquired: %s" % key_name)
 
-  task_ref = Task(actor=nick,
-                  action=action,
-                  action_id=action_id,
-                  expire=None,
-                  args=args,
-                  kw=kw,
-                  progress=progress
-                  )
+  task_ref = models.Task(actor=nick,
+                         action=action,
+                         action_id=action_id,
+                         expire=None,
+                         args=args,
+                         kw=kw,
+                         progress=progress
+                         )
   task_ref.put()
   return task_ref
 
 @owner_required
 def task_get(api_user, nick, action, action_id, expire=DEFAULT_TASK_EXPIRE):
   """ attempts to acquire a lock on a queue item for (default) 10 seconds """
+  logging.warning('task_get is deprecated')
   
-  key_name = Task.key_from(actor=nick, action=action, action_id=action_id)
+  key_name = models.Task.key_from(
+      actor=nick, action=action, action_id=action_id)
 
   # TODO(termie): this could probably be a Key.from_path action
-  q = Task.get_by_key_name(key_name)
+  q = models.Task.get_by_key_name(key_name)
   if not q:
     raise exception.ApiNotFound(
         'Could not find task: %s %s %s' % (nick, action, action_id))
@@ -2944,12 +2934,12 @@ def task_get(api_user, nick, action, action_id, expire=DEFAULT_TASK_EXPIRE):
   locked = memcache.client.add(key_name, 'owned', time=expire)
   if not locked: 
     raise exception.ApiLocked("Lock could not be acquired: %s" % key_name)
-
   return q
 
 @owner_required
 def task_get_or_create(api_user, nick, action, action_id, args=None, 
                        kw=None, progress=None, expire=DEFAULT_TASK_EXPIRE):
+  logging.warning('task_get_or_create is deprecated')
   try:
     task_ref = task_get(api_user, nick, action, action_id, expire)
   except exception.ApiNotFound:
@@ -2967,11 +2957,13 @@ def task_get_or_create(api_user, nick, action, action_id, args=None,
 #@throttled(minute=30, hour=1200, day=4000, month=20000)
 @owner_required
 def task_process_actor(api_user, nick):
+  logging.warning('task_process_actor is deprecated')
   nick = clean.nick(nick)
   return task_process_any(ROOT, nick)
  
 @admin_required   
 def task_process_any(api_user, nick=None):
+  logging.warning('task_process_any is deprecated')
   # Basing this code largely off of pubsubhubbub's queueing approach
   # Hard-coded for now, these will get moved up
   work_count = 1
@@ -2981,10 +2973,10 @@ def task_process_any(api_user, nick=None):
   sample_size = work_count * sample_ratio
 
   if nick:
-    query = Task.gql('WHERE actor = :1 ORDER BY created_at',
+    query = models.Task.gql('WHERE actor = :1 ORDER BY created_at',
                      nick)
   else:
-    query = Task.gql('ORDER BY created_at')
+    query = models.Task.gql('ORDER BY created_at')
   
   work_to_do = query.fetch(sample_size)
   if not work_to_do:
@@ -3014,7 +3006,13 @@ def task_process_any(api_user, nick=None):
 
   work = [work_map[k] for k in locked_keys[:work_count]]
   
-  for task_ref in work:
+  for old_task_ref in work:
+    task_ref = Task(actor=old_task_ref.actor,
+                    action=old_task_ref.action,
+                    action_id=old_task_ref.action_id,
+                    progress=old_task_ref.progress,
+                    args=old_task_ref.args,
+                    kw=old_task_ref.kw)
     logging.info("Processing task: %s %s %s p=%s", 
                   task_ref.actor,
                   task_ref.action, 
@@ -3032,6 +3030,8 @@ def task_process_any(api_user, nick=None):
                       *task_ref.args, 
                       **task_ref.kw)
 
+      logging.warning('task_process_any is deprecated, deleting old task')
+      task_ref.delete()
     except exception.ApiDeleted:
       logging.warning('Owner or target of task has been deleted. Removing task.')
       task_ref.delete()
@@ -3042,9 +3042,11 @@ def task_process_any(api_user, nick=None):
 
 @owner_required
 def task_remove(api_user, nick, action, action_id):
-  key_name = Task.key_from(actor=nick, action=action, action_id=action_id)
+  logging.warning('task_remove is deprecated')
+  key_name = models.Task.key_from(
+      actor=nick, action=action, action_id=action_id)
   
-  q = Task.get_by_key_name(key_name)
+  q = models.Task.get_by_key_name(key_name)
   if not q:
     raise exception.ApiNotFound(
         'Could not find task: %s %s %s' % (nick, action, action_id))
@@ -3058,9 +3060,11 @@ def task_remove(api_user, nick, action, action_id):
 @owner_required
 def task_update(api_user, nick, action, action_id, progress=None, unlock=True):
   """ update the progress for a task and possibly unlock it """
-  key_name = Task.key_from(actor=nick, action=action, action_id=action_id)
+  logging.warning('task_update is deprecated')
+  key_name = models.Task.key_from(
+      actor=nick, action=action, action_id=action_id)
 
-  q = Task.get_by_key_name(key_name)
+  q = models.Task.get_by_key_name(key_name)
   if not q:
     raise exception.ApiNotFound(
         'Could not find task: %s %s %s' % (nick, action, action_id))
@@ -3642,6 +3646,315 @@ class PrimitiveResultWrapper(object):
   
 
 # BACKEND
+class Task(object):
+  def __init__(self, actor, action, action_id, progress, args, kw):
+    self.actor = actor
+    self.action = action
+    self.action_id = action_id
+    self.progress = progress
+    self.args = args
+    self.kw = kw
+  
+  @classmethod
+  def from_request(cls, request):
+    actor = request.POST.get('actor')
+    action = request.POST.get('action')
+    action_id = request.POST.get('action_id')
+    progress = request.POST.get('progress')
+    json_args = request.POST.get('args')
+    json_kw = request.POST.get('kw')
+
+    args = simplejson.loads(json_args)
+    kw = dict((str(k), v) for (k, v) in simplejson.loads(json_kw).iteritems())
+
+    return cls(actor=actor,
+               action=action,
+               action_id=action_id,
+               progress=progress,
+               args=args,
+               kw=kw)
+
+  def add_to_queue(self):
+    json_args = simplejson.dumps(self.args)
+    json_kw = simplejson.dumps(self.kw)
+    params = {'actor': self.actor,
+              'action': self.action,
+              'action_id': self.action_id,
+              'progress': self.progress,
+              'args': json_args,
+              'kw': json_kw}
+    name = '%(actor)s/%(action)s/%(action_id)s/%(progress)s' % params
+    logging.info('Queueing task: base64(%s)', name)
+    name = base64.b64encode(name).strip('=')
+    taskqueue.add(name=name, params=params)
+  
+class TaskSpec(object):
+  """An abstraction for dealing with multi-stage actions across requests.
+
+  It holds a series of goals and based on progress information passed along
+  by the task queue moves iterates through them.
+  """
+  _lock_iteration = False
+  stages = None
+
+  def __init__(self, task_ref, **kw):
+    self.task_ref = task_ref
+    self.kw = kw
+
+  def next_stage(self):
+    """ return a reference to the stage after whatever the current one is """
+    current_stage = self.current_stage_index()
+    next_stage = self.stages[current_stage + 1]
+    return next_stage
+
+  def bump_stage(self):
+    next_stage = self.next_stage()
+    self.update_task(progress='%s:' % next_stage.stage)
+
+  def bump_progress(self, progress):
+    self.update_task(progress=':'.join(progress))
+
+  def update_task(self, progress):
+    self._lock_iteration = False
+    try:
+      # Update the task's progress and add it to the queue
+      self.task_ref.progress = progress
+      self.task_ref.add_to_queue()
+    except exception.Error:
+      exception.log_exception()
+
+  def finish(self):
+    pass
+
+  def current_stage_index(self):
+    progress = self.task_ref.progress
+    stage_index = 0
+    if not progress:
+      return stage_index
+
+    stage_id, stage_progress = progress.split(':', 1)
+
+    for test_stage in self.stages:
+      if stage_id == test_stage.stage:
+        return stage_index
+      stage_index += 1
+
+    raise Exception("no stage for: %s" % stage_id)
+
+  def next(self):
+    """ returns the next goal to process based on current progress
+
+    Note: relies on goals to move along the progress, should not be called
+          more than once without processing a goal in between
+
+    """
+    if self._lock_iteration:
+      raise Exception('Called task.next() twice in a row')
+
+    # TODO(termie): this mostly duplicates work in current_stage_index
+    progress = self.task_ref.progress
+    if not progress:
+      stage_class = self.stages[0]
+      stage_progress = ""
+    else:
+      stage_id, stage_progress = progress.split(':', 1)
+      stage_class = None
+      for test_stage in self.stages:
+        if stage_id == test_stage.stage:
+          stage_class = test_stage
+          break
+
+    if not stage_class:
+      logging.warning('no next goal found for: %s', progress)
+      return None
+
+    self._lock_iteration = True
+    return stage_class(self, stage_progress, self.kw)
+
+  def process(self):
+    next_goal = self.next()
+    if not next_goal:
+      logging.warning('Called next goal and got nothing')
+      self.finish()
+    return next_goal()
+
+class Goal(object):
+  stage = None
+
+  def __init__(self, task, stage_progress=None, kw=None):
+    self.task = task
+    self.stage_progress = stage_progress
+    for k, v in kw.iteritems():
+      setattr(self, k, v)
+
+  def __call__(self):
+    pass
+
+  def bump(self, next_progress=None):
+    if next_progress:
+      self.task.bump_progress([self.stage, next_progress])
+    else:
+      self.task.bump_stage()
+
+class EndGoal(Goal):
+  stage = "finish"
+  def __call__(self):
+    self.task.finish()
+
+class AddEntryInitial(Goal):
+  def __call__(self):
+    # throttle
+
+    # FIRST STAGE: make the entry and initial inbox
+    #              we'll also try to make the first set of followers
+    throttle.throttle(self.actor_ref, 
+                      self.task.task_ref.action, 
+                      minute=10, 
+                      hour=100, 
+                      day=500, 
+                      month=5000)
+
+    # every step of the way we try to do things in a way that will
+    # degrade best upon failure of any part, if these first three
+    # additions don't go through then there isn't really any entry
+    # and the user isn't going to see much until the queue picks
+    # it up
+    new_entry_ref = _add_entry(self.new_stream_ref, 
+                               self.new_values, 
+                               entry_ref=self.entry_ref)
+
+    # We're going to need this list all over so that we can remove it from 
+    # the other inbox results we get after we've made the first one
+    initial_inboxes = _who_cares_web_initial(self.actor_ref, 
+                                             new_entry_ref, 
+                                             self.entry_ref)
+
+    # these are the most important first inboxes, they get the entry to show
+    # up for the user that made them and anybody who directly views the
+    # author's history
+    initial_inboxes_ref = _add_inbox(self.new_stream_ref, 
+                                     new_entry_ref,
+                                     initial_inboxes,
+                                     shard='owner')
+
+    self.bump()
+    return new_entry_ref
+
+class AddEntryInboxes(Goal):
+  stage = "inboxes"
+
+  def __call__(self):
+    # we'll need to get a reference to the entry that has already been created
+    entry_keyname = StreamEntry.key_from(**self.new_values)
+    new_entry_ref = entry_get(ROOT, entry_keyname)
+
+    # We're going to need this list all over so that we can remove it from 
+    # the other inbox results we get after we've made the first one
+    initial_inboxes = _who_cares_web_initial(self.actor_ref, 
+                                             new_entry_ref, 
+                                             self.entry_ref)
+
+    # More followers! Over and over. Like a monkey with a miniature cymbal.
+    follower_inboxes, more = _who_cares_web(new_entry_ref, 
+                                            progress=self.stage_progress,
+                                            skip=initial_inboxes)
+    
+    last_inbox = _paged_add_inbox(follower_inboxes,
+                                  self.new_stream_ref,
+                                  new_entry_ref)
+
+    self.bump(next_progress=(more and last_inbox))
+
+    return new_entry_ref
+
+class AddEntryNotify(Goal):
+  """Base class for AddEntry Notification Goals.
+  """
+  stage = None
+  notification_type = None
+
+  def __call__(self, grind=True):
+    # We'll need to get a reference to the entry that has already been created
+    entry_keyname = StreamEntry.key_from(**self.new_values)
+    new_entry_ref = entry_get(ROOT, entry_keyname)
+
+    initial_inboxes, follower_inboxes = self.get_inboxes(new_entry_ref)
+
+    # The first time through we'll want to include the initial inboxes, too
+    if not self.stage_progress:
+      follower_inboxes = initial_inboxes + follower_inboxes
+
+    last_inbox = None
+    if follower_inboxes:
+      last_inbox = follower_inboxes[-1]
+    
+    self.bump(next_progress=last_inbox)
+
+    # perform the notifications
+    _notify_subscribers_for_entry_by_type(self.notification_type,
+                                          follower_inboxes,
+                                          self.actor_ref,
+                                          self.new_stream_ref,
+                                          new_entry_ref,
+                                          entry_ref=self.entry_ref,
+                                          entry_stream_ref=self.entry_stream_ref
+                                          )
+
+    return new_entry_ref
+
+class AddEntryNotifyIm(AddEntryNotify):
+  stage = "notify_im"
+  notification_type = "im"
+  
+  def get_inboxes(self, new_entry_ref):
+    initial_inboxes = _who_cares_im_initial(self.actor_ref, 
+                                            new_entry_ref, 
+                                            self.entry_ref)
+
+    follower_inboxes, more = _who_cares_im(new_entry_ref, 
+                                           progress=self.stage_progress,
+                                           skip=initial_inboxes)
+
+    return initial_inboxes, follower_inboxes
+
+class AddEntryNotifySms(AddEntryNotify):
+  stage = "notify_sms"
+  notification_type = "sms"
+  
+  def get_inboxes(self, new_entry_ref):
+    initial_inboxes = _who_cares_sms_initial(self.actor_ref, 
+                                             new_entry_ref, 
+                                             self.entry_ref)
+
+    follower_inboxes, more = _who_cares_sms(new_entry_ref, 
+                                            progress=self.stage_progress,
+                                            skip=initial_inboxes)
+    return initial_inboxes, follower_inboxes
+
+class AddEntryNotifyEmail(AddEntryNotify):
+  stage = "notify_email"
+  notification_type = "email"
+  
+  def get_inboxes(self, new_entry_ref):
+    initial_inboxes = _who_cares_email_initial(self.actor_ref,
+                                               new_entry_ref,
+                                               self.entry_ref)
+
+    follower_inboxes, more = _who_cares_email(new_entry_ref, 
+                                              progress=self.stage_progress,
+                                              skip=initial_inboxes)    
+    
+    return initial_inboxes, follower_inboxes
+
+class AddEntryTaskSpec(TaskSpec):
+  stages = [AddEntryInitial,
+            AddEntryInboxes,
+            AddEntryNotifyIm,
+            AddEntryNotifySms,
+            AddEntryNotifyEmail,
+            EndGoal
+            ]
+
 
 # new squeuel
 def _process_new_entry_with_progress(task_ref, actor_ref, new_stream_ref,
@@ -3659,6 +3972,7 @@ def _process_new_entry_with_progress(task_ref, actor_ref, new_stream_ref,
                      new comment is on
 
   """
+  logging.warning('_process_new_entry_with_progress is deprecated')
   #logging.info("Processing task: %s %s %s p=%s", 
   #              task_ref.actor,
   #              task_ref.action, 

@@ -117,6 +117,7 @@ urlpatterns += patterns('login.views',
 urlpatterns += patterns('',
     (r'^api/', include('api.urls')),
     (r'^api', 'django.views.generic.simple.redirect_to', {'url': '/api/docs'}),
+    (r'_ah/queue/default', 'api.views.api_task_queue'),
 )
 
 

@@ -24,10 +24,12 @@ from django.template import loader
 
 import simplejson
 
-from google.appengine.ext import db
 
+from google.appengine.ext import db
+from google.appengine.api.labs import taskqueue
 from api import xmlrpc
 from common import api
+from common import clean
 from common import decorator
 from common import exception
 from common import im
@@ -408,6 +410,35 @@ def api_vendor_queue_process(request):
       return http.HttpResponseRedirect(request.get_full_path())
   except exception.ApiNoTasks:
     pass
+  return http.HttpResponse('')
+
+def api_task_queue(request):
+  """Process a queued task.
+  
+  A task will look like:
+    actor
+    action
+    action_id
+    progress
+    args (picked list)
+    kw (pickled dict)
+  
+  It will map to an api call (action) that will be called with 
+  (actor, _task_ref=task_ref, *args, **kw) as arguments.
+  """
+  try:
+    task_ref = api.Task.from_request(request)
+  except Exception, e:
+    logging.exception('Unhandled exception while building task ref')
+    logging.warning('request.post %s', request.POST)
+    return http.HttpResponse('')
+
+  try:
+    actor_ref = api.actor_get(api.ROOT, task_ref.actor)
+    method_ref = api.PublicApi.get_method(task_ref.action)
+    method_ref(actor_ref, _task_ref=task_ref, *task_ref.args, **task_ref.kw)
+  except exception.Error:
+    logging.exception('Unexpected error while processing queue:')
   return http.HttpResponse('')
 
 

@@ -82,6 +82,10 @@ handlers:
   script: "main.py"
   secure: optional
 
+- url: /_ah/queue/default
+  script: "main.py"
+  login: admin
+
 - url: .*
   script: "main.py"
   secure: optional
