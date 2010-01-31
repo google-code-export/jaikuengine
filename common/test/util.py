@@ -18,7 +18,12 @@ import datetime
 import logging
 import re
 import time as py_time
-import urlparse
+try:
+  # Python 2.6
+  from urlparse import parse_qsl
+except ImportError:
+  # Python 2.5
+  from cgi import parse_qsl
 
 from google.appengine.api import apiproxy_stub_map
 
@@ -58,7 +63,7 @@ def exhaust_queue_any():
   while tasks:
     task = tasks.pop(0)
     body = base64.b64decode(task['body'])
-    params = dict(urlparse.parse_qsl(body, keep_blank_values=True))
+    params = dict(parse_qsl(body, keep_blank_values=True))
     logging.debug('body %s', params)
 
     try:
