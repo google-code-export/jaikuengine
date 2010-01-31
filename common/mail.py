@@ -21,6 +21,7 @@ from django.conf import settings
 from django import template
 from django.template import loader
 from django.core import mail
+from django.utils.http import urlquote
 
 from common import exception
 from common import util
@@ -190,9 +191,9 @@ def email_new_follower_mutual(owner_ref, target_ref):
 
 def email_lost_password(actor, email, code):
   email_link = ("http://%s/login/reset?email=%s&hash=%s" %
-                (settings.DOMAIN, email, code))
+                (settings.DOMAIN, urlquote(email), code))
   email_mobile_link = ("http://m.%s/login/reset?email=%s&hash=%s" %
-                       (settings.DOMAIN, email, code))
+                       (settings.DOMAIN, urlquote(email), code))
 
   t = loader.get_template('common/templates/email/email_password.txt')
   c = template.Context(locals(), autoescape=False)
