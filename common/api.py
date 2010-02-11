@@ -1955,7 +1955,8 @@ def entry_get_inbox_since(api_user, inbox, limit=30, since_time=None):
 
 def entry_get_inbox(api_user, inbox, limit=30, offset=None):
   inbox = inbox_get_entries(api_user, inbox, limit=limit, offset=offset)
-  return entry_get_entries(api_user, inbox)
+  entries = entry_get_entries(api_user, inbox)
+  return ResultWrapper(entries, entries=entries)
 
 @owner_required
 def entry_get_actor_overview(api_user, nick, limit=30, offset=None):
