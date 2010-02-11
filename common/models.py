@@ -106,10 +106,14 @@ class CachingModel(ApiMixinModel):
   _cache_enabled = False
   _get_count = 0
   def __init__(self, parent=None, key_name=None, _app=None, **kw):
-    if not key_name:
+    if not key_name and 'key' not in kw:
       key_name = self.key_from(**kw)
 
-    super(CachingModel, self).__init__(parent, key_name, _app, **kw)
+    super(CachingModel, self).__init__(
+        parent, key_name=key_name, _app=_app, **kw)
+
+    if not key_name:
+      key_name = self.key_from(**kw)
     self._cache_keyname__ = (key_name, parent)
   
   @classmethod
