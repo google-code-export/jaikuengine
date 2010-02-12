@@ -3154,9 +3154,10 @@ def settings_hide_comments(api_user, hide_comments, nick):
 
 @owner_required
 def settings_update_account(api_user, nick, **kw):
-  # note: the only thing we care about at this point is full_name
+  # the only things we care about at this point are full_name and homepage
   params = {'given_name': kw.get('given_name', kw.get('first_name', '')),
-            'family_name': kw.get('family_name', kw.get('last_name', ''))}
+            'family_name': kw.get('family_name', kw.get('last_name', '')),
+            'homepage': kw.get('homepage', '')}
   validate.name(params['given_name'], "Your First Name", 'given_name')
   validate.name(params['family_name'], "Your Last Name", 'family_name')
 
@@ -3459,6 +3460,7 @@ def user_create(api_user, **kw):
     'extra': {
       'given_name': kw.get('given_name', kw.get('first_name', '')),
       'family_name': kw.get('family_name', kw.get('last_name', '')),
+      'homepage': kw.get('homepage', ''),
       'sms_double_opt_in': True,
     },
   }

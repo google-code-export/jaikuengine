@@ -18,6 +18,7 @@ class JoinTest(ViewTestCase):
                       'email': 'johndoe@google.com',
                       'password': 'good*password',
                       'confirm': 'good*password',
+                      'homepage': 'http://www.example.com/johndoe',
                       'hide': '1',
                       #'invite': ''
                       }

@@ -607,7 +607,8 @@ class NewUserTest(ViewTestCase):
   def test_pages_as_newuser(self):
     api.user_create(api.ROOT, nick = 'mmmm', password = 'mmmmmm',
                     first_name = 'm',
-                    last_name ='m')
+                    last_name ='m',
+                    homepage ='http://www.example.com/~m')
     for page in ('/user/root',
                  '/user/mmmm/overview',
                  '/user/mmmm/contacts',

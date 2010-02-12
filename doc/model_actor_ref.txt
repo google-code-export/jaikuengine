@@ -33,6 +33,7 @@ An actor_ref can be either a user or a channel. It has the following attributes:
   * family_name - applicable to users only
   * contact_count - applicable to users only
   * channel_count - applicable to users only
+  * homepage - applicable to users only
 
 .. _more info on timestamp: /api/docs/response_timestamp
 .. _more info on icon: /api/docs/response_icon

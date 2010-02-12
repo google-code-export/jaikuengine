@@ -10,6 +10,10 @@
 
   {{component.best.analytics.header|safe}}
 
+  {% if view.extra.homepage %}
+  <link rel="me" type="text/html" href="{{view.extra.homepage}}"/>
+  {% endif %}
+
   <link rel="icon" href="/themes/{{DEFAULT_THEME|urlencode}}/favicon.ico" type="image/x-icon" />
 
   {# base stylesheet #}

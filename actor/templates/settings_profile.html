@@ -85,9 +85,17 @@
       {% endif %}
     </div>
   {% endif %}
+ 
+  <div>
+    <label for="homepage">Homepage</label>
+    <input type="text" name="homepage" id="homepage"
+           class="text" value="{{view.extra.homepage}}"/>
+  </div>
+   
   <div class="buttons">
     <input type="submit" value="Save Changes"/>
   </div>
+
 </form>
 
 <a class="dangerous" href="{{view.url}}/settings/delete">

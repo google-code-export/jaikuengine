@@ -41,6 +41,7 @@ ACTOR_ALLOWED_EXTRA = ('contact_count',
                        'admin_count', 
                        'given_name', 
                        'family_name'
+                       'homepage'
                        )
 
 ACTOR_LIMITED_EXTRA = ('icon', 
@@ -272,7 +273,7 @@ class Actor(DeletedMarkerModel):
     bg_color - string; color for background
     bg_repeat - whether to repeat bg_image
     description [channel] - string; Channel description
-    external_url [channel] - string; External url related ot channel
+    external_url [channel] - string; External url related to channel
     member_count [channel] - int; number of members
     admin_count [channel] - int; number of admins
     email_notify [user] - boolean; does the user want email notifications?

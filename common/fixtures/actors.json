@@ -38,7 +38,8 @@
                        "contact_count": 2,
                        "follower_count": 4,
                        "given_name": "Cele",
-                       "family_name": "Brity"}
+                       "family_name": "Brity",
+                       "homepage": "http://www.example.com/celebrity"}
              }
   },
  {"pk": "actor/boyfriend@example.com", 

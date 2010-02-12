@@ -44,13 +44,14 @@ def join_join(request):
   redirect_to = request.REQUEST.get('redirect_to', '/')
 
   # get the submitted vars
-  nick = request.REQUEST.get('nick', '');
-  first_name = request.REQUEST.get('first_name', '');
-  last_name = request.REQUEST.get('last_name', '');
-  email = request.REQUEST.get('email', '');
-  password = request.REQUEST.get('password', '');
-  confirm = request.REQUEST.get('confirm', '');
-  hide = request.REQUEST.get('hide', '');
+  nick = request.REQUEST.get('nick', '')
+  first_name = request.REQUEST.get('first_name', '')
+  last_name = request.REQUEST.get('last_name', '')
+  email = request.REQUEST.get('email', '')
+  password = request.REQUEST.get('password', '')
+  confirm = request.REQUEST.get('confirm', '')
+  homepage = request.REQUEST.get('homepage', '')
+  hide = request.REQUEST.get('hide', '')
 
   if request.POST:
     try:
