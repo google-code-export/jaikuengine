@@ -145,6 +145,20 @@
              "relation": "contact"
              }
   },
+ {"pk": "relation/contact/otherboyfriend@example.com/girlfriend@example.com",
+  "model": "common.Relation",
+  "fields": {"owner": "otherboyfriend@example.com",
+             "target": "girlfriend@example.com",
+             "relation": "contact"
+             }
+  },
+ {"pk": "relation/contact/girlfriend@example.com/otherboyfriend@example.com",
+  "model": "common.Relation",
+  "fields": {"owner": "girlfriend@example.com",
+             "target": "otherboyfriend@example.com",
+             "relation": "contact"
+             }
+  },
  {"pk": "relation/channeladmin/#popular@example.com/popular@example.com",
   "model": "common.Relation",
   "fields": {"owner": "#popular@example.com",

@@ -84,6 +84,14 @@ class FixturesTestCase(test.TestCase):
       self.override.reset()
       del self.override
 
+  def assertSetEqual(self, expected_set, test_set):
+    if expected_set != test_set:
+      more = test_set - expected_set
+      less = expected_set - test_set
+      raise AssertionError('Expected: %s\nGot: %s\n + %s\n - %s' % (
+                            expected_set, test_set, more, less))
+
+
   def clear_cache(self):
     memcache.client._data = {}
 

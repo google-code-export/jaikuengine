@@ -150,7 +150,7 @@
                        "entry_stream_type": "presence",
                        "entry_title": "private test entry 1",
                        "entry_uuid": "16961",
-                       "entry_actor": "popular@example.com"
+                       "entry_actor": "girlfriend@example.com"
                        },
              "uuid": "16963",
              "entry": "stream/girlfriend@example.com/presence/16961",

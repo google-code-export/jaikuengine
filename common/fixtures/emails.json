@@ -40,6 +40,13 @@
              "relation": "email"
              }
   },
+ {"pk": "relation/email/girlfriend@example.com/girlfriend@example.com",
+  "model": "common.Relation",
+  "fields": {"owner": "girlfriend@example.com",
+             "target": "girlfriend@example.com",
+             "relation": "email"
+             }
+  },
  {"pk": "relation/email/hotness@example.com/hotness@foobar.com",
   "model": "common.Relation",
   "fields": {"owner": "hotness@example.com",

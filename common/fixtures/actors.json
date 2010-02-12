@@ -51,13 +51,29 @@
              "type": "user",
              "extra": {"icon": "default/animal_3",
                        "contact_count": 1,
-                       "follower_count": 1}
+                       "follower_count": 1,
+                       "email_notify": 1,
+                       "im_notify": 1}
              }
   },
  {"pk": "actor/girlfriend@example.com", 
   "model": "common.actor", 
   "fields": {"nick": "girlfriend@example.com",
              "normalized_nick": "girlfriend@example.com",
+             "password": "baz",
+             "privacy": 2,
+             "type": "user",
+             "extra": {"icon": "default/animal_3",
+                       "contact_count": 2,
+                       "follower_count": 2,
+                       "im_notify": 1,
+                       "email_notify": 1}
+             }
+  },
+ {"pk": "actor/otherboyfriend@example.com", 
+  "model": "common.actor", 
+  "fields": {"nick": "otherboyfriend@example.com",
+             "normalized_nick": "otherboyfriend@example.com",
              "password": "baz",
              "privacy": 2,
              "type": "user",

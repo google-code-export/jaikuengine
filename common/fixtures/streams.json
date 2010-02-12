@@ -138,6 +138,26 @@
              "write": 1
              }
   },
+ {"pk": "stream/otherboyfriend@example.com/presence",
+  "model": "common.stream",
+  "fields": {"title": "otherboyfriend's presence",
+             "owner": "otherboyfriend@example.com",
+             "type": "presence",
+             "slug": "presence",
+             "read": 2,
+             "write": 1
+             }
+  },
+ {"pk": "stream/otherboyfriend@example.com/comments",
+  "model": "common.stream",
+  "fields": {"title": "otherboyfriend's comments",
+             "owner": "otherboyfriend@example.com",
+             "type": "comment",
+             "slug": "comments",
+             "read": 1,
+             "write": 1
+             }
+  },
  {"pk": "stream/hermit@example.com/presence",
   "model": "common.stream",
   "fields": {"title": "hermit's presence",
@@ -204,7 +224,7 @@
              "owner": "#popular@example.com",
              "type": "presence",
              "slug": "presence",
-             "read": 2,
+             "read": 3,
              "write": 2
              }
   }

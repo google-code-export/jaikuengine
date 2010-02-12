@@ -66,6 +66,39 @@
   },
   
 
+ {"pk": "stream/girlfriend@example.com/presence/inbox/annoying@example.com/overview",
+  "model": "common.subscription",
+  "fields": {"topic": "stream/girlfriend@example.com/presence",
+             "subscriber": "annoying@example.com",
+             "state": "pending",
+             "target": "inbox/annoying@example.com/overview"
+             }
+  },
+ {"pk": "stream/girlfriend@example.com/comments/inbox/annoying@example.com/overview",
+  "model": "common.subscription",
+  "fields": {"topic": "stream/girlfriend@example.com/comments",
+             "subscriber": "annoying@example.com",
+             "state": "pending",
+             "target": "inbox/annoying@example.com/overview"
+             }
+  },
+ {"pk": "stream/girlfriend@example.com/presence/inbox/boyfriend@example.com/overview",
+  "model": "common.subscription",
+  "fields": {"topic": "stream/girlfriend@example.com/presence",
+             "subscriber": "boyfriend@example.com",
+             "state": "subscribed",
+             "target": "inbox/boyfriend@example.com/overview"
+             }
+  },
+ {"pk": "stream/girlfriend@example.com/comments/inbox/boyfriend@example.com/overview",
+  "model": "common.subscription",
+  "fields": {"topic": "stream/girlfriend@example.com/comments",
+             "subscriber": "boyfriend@example.com",
+             "state": "subscribed",
+             "target": "inbox/boyfriend@example.com/overview"
+             }
+  },
+
 
  {"pk": "stream/root@example.com/presence/inbox/popular@example.com/overview",
   "model": "common.subscription",
@@ -138,6 +171,14 @@
              "subscriber": "unpopular@example.com",
              "state": "subscribed",
              "target": "inbox/unpopular@example.com/overview"
+             }
+  },
+ {"pk": "stream/girlfriend@example.com/presence/16961/inbox/boyfriend@example.com/overview",
+  "model": "common.subscription",
+  "fields": {"topic": "stream/girlfriend@example.com/presence/16961",
+             "subscriber": "boyfriend@example.com",
+             "state": "subscribed",
+             "target": "inbox/boyfriend@example.com/overview"
              }
   }
 ]

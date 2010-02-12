@@ -1657,7 +1657,7 @@ def channel_post(api_user, **kw):
   # XXX start transaction
   #presence = _set_presence(**values)
   entry = _add_entry(stream, new_values=values)
-  subscribers = _subscribers_for_entry(stream, entry)
+  subscribers = _subscribers_for_channel_entry(stream, entry)
   inboxes = _add_inboxes_for_entry(subscribers, stream, entry)
   _notify_subscribers_for_entry(subscribers, actor_ref, stream, entry)
   # XXX end transaction
@@ -2281,6 +2281,17 @@ def inbox_get_entries_since(api_user, inbox, limit=30, since_time=None,
 def inbox_get_explore(api_user, limit=30, offset=None):
   inbox = 'inbox/%s/explore' % ROOT.nick
   return inbox_get_entries(api_user, inbox, limit, offset)
+
+@admin_required
+def inbox_get_all_for_entry(api_user, stream, uuid, entry=None):
+  query = InboxEntry.gql('WHERE stream = :1 AND uuid = :2 AND entry = :3',
+                         stream,
+                         uuid,
+                         entry)
+  inboxes = []
+  for inbox_entry in query:
+    inboxes += inbox_entry.inbox
+  return inboxes
 
 #######
 #######
@@ -3687,7 +3698,7 @@ class Task(object):
               'args': json_args,
               'kw': json_kw}
     name = '%(actor)s/%(action)s/%(action_id)s/%(progress)s' % params
-    logging.info('Queueing task: base64(%s)', name)
+    logging.debug('Queueing task: base64(%s)', name)
     name = base64.b64encode(name).strip('=')
     taskqueue.add(name=name, params=params)
   
@@ -3892,7 +3903,10 @@ class AddEntryNotify(Goal):
       last_inbox = follower_inboxes[-1]
     
     self.bump(next_progress=last_inbox)
+    
+    self.notify(follower_inboxes, new_entry_ref)
 
+  def notify(self, follower_inboxes, new_entry_ref):
     # perform the notifications
     _notify_subscribers_for_entry_by_type(self.notification_type,
                                           follower_inboxes,
@@ -4705,7 +4719,7 @@ def _notify_sms_for_entry(inboxes, actor_ref, new_stream_ref, new_entry_ref,
 
 
 # old skewl
-def _subscribers_for_entry(stream_ref, entry_ref):
+def _subscribers_for_channel_entry(stream_ref, entry_ref):
   """
   Computes the list of streams that should be updated when a post is made.
   Returns the list.
@@ -4730,7 +4744,6 @@ def _subscribers_for_entry(stream_ref, entry_ref):
   if stream_ref.read > PRIVACY_PRIVATE:
     subscribers.append('inbox/%s/contacts' % entry_ref.owner)
   subscribers.append('inbox/%s/private' % entry_ref.owner)
-  subscribers.append('inbox/%s/overview' % entry_ref.owner)
   subscribers = list(set(subscribers))
   return subscribers
 
@@ -4914,7 +4927,6 @@ def _notify_im_subscribers_for_entry(subscribers_ref, actor_ref, stream_ref, ent
 
   # We're effectively duplicationg common.display.prep_entry here
   entry_ref.stream_ref = stream_ref
-  logging.info('stream_ref %s', stream_ref)
   entry_ref.owner_ref = actor_get(ROOT, entry_ref.owner)
   entry_ref.actor_ref = actor_ref
   entry = entry_ref
