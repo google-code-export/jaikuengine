@@ -37,7 +37,6 @@ def badge_badge(request, format, nick):
     location = presence.extra.get('location', '')
 
   if format == 'image':
-    # TODO: Create badge images
     return http.HttpResponseRedirect('/images/badge_%s.gif' % light)
 
   if format == 'js-small':
@@ -50,12 +49,11 @@ def badge_badge(request, format, nick):
     content_type = 'text/javascript'
     template_path = '%s.js' % format.replace('-', '_')
   elif format == 'json':
-    # TODO: Create badge.json template
-    content_type = 'application/json'
+    content_type = 'text/javascript'
     template_path = 'badge.json'
+
   elif format == 'xml':
     content_type = 'application/xml'
-    # TODO: Create badge.xml template
     template_path = 'badge.xml'
 
   c = template.RequestContext(request, locals())

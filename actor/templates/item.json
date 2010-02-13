@@ -1,4 +1,5 @@
-{% load json %}{
+{% load json %}
+{
   "id": {{entry.uuid|escapejson}},
   "title": {{entry.title|escapejson}},
   "content": {{entry.extra.content|escapejson}},

@@ -1,4 +1,5 @@
-{% load json %}{
+{% load json %}
+{ 
   "title": "{{SITE_NAME}} | Overview",
   "url": {% filter escapejson %}{{view.url}}/overview{% endfilter %},
   "stream": {% include 'common/templates/stream.json' %}

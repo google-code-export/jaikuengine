@@ -51,7 +51,7 @@ def explore_recent(request, format="html"):
 
   area = 'explore'
   sidebar_green_top = True
-
+  
   c = template.RequestContext(request, locals())
 
   if format == 'html':
@@ -59,10 +59,13 @@ def explore_recent(request, format="html"):
     return http.HttpResponse(t.render(c));
   elif format == 'json':
     t = loader.get_template('explore/templates/recent.json')
-    return util.HttpJsonResponse(t.render(c), request)
+    r = util.HttpJsonResponse(t.render(c), request)
+    return r
   elif format == 'atom':
     t = loader.get_template('explore/templates/recent.atom')
-    return util.HttpAtomResponse(t.render(c), request)
+    r = util.HttpAtomResponse(t.render(c), request)
+    return r
   elif format == 'rss':
     t = loader.get_template('explore/templates/recent.rss')
-    return util.HttpRssResponse(t.render(c), request)
+    r = util.HttpRssResponse(t.render(c), request)
+    return r

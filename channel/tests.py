@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import simplejson
-
 from common import messages
 from common import profile
 from common import util
@@ -404,45 +401,4 @@ class CommentTest(ViewTestCase):
     r = self.assertGetLink(r, 'confirm-delete', link_no=1, of_count=2)
     r = self.assertRedirectsPrefix(r, '/channel/popular/presence/13345?flash')
     self.assertContains(r, 'Comment deleted')
-
-
-class JsonTest(ViewTestCase):
-  def test_json_feed(self):
-    r = self.client.get('/channel/popular/json')
-    self.assertEqual(r.status_code, 200)
-    j = simplejson.loads(r.content)
-    self.assertEqual(j['url'][-16:], "/channel/popular")
-    self.assertTemplateUsed(r, 'channel/templates/history.json')
-    self.assertTemplateUsed(r, 'common/templates/stream.json')
-    self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_feed_with_callback(self):
-    r = self.client.get('/channel/popular/json',
-                        {'callback': 'callback'})
-    self.assertEqual(r.status_code, 200)
-    self.assertContains(r, '\/channel\/popular",', status_code=200)
-    self.failIf(not re.match('callback\(', r.content))
-    self.failIf(not re.search('\);$', r.content))
-    self.assertTemplateUsed(r, 'channel/templates/history.json')
-    self.assertTemplateUsed(r, 'common/templates/stream.json')
-    self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_item(self):
-    r = self.client.get('/channel/popular/presence/13345/json')
-    self.assertEqual(r.status_code, 200)
-    j = simplejson.loads(r.content)
-    self.assertEqual(j['title'], "test channel entry 1")
-    self.assertTemplateUsed(r, 'actor/templates/item.json')
-    self.assertTemplateUsed(r, 'common/templates/stream.json')
-    self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_item_with_callback(self):
-    r = self.client.get('/channel/popular/presence/13345/json',
-                        {'callback': 'callback'})
-    self.assertContains(r, '"title": "test channel entry 1",', status_code=200)
-    self.failIf(not re.match('callback\(', r.content))
-    self.failIf(not re.search('\);$', r.content))
-    self.assertTemplateUsed(r, 'actor/templates/item.json')
-    self.assertTemplateUsed(r, 'common/templates/stream.json')
-    self.assertTemplateUsed(r, 'common/templates/user.json')
-
+    

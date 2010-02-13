@@ -52,21 +52,6 @@ class UtilTestCase(test.TestCase):
     for t in topics:
       self.assertEqual(util.get_user_from_topic(t[1]), t[0], t[1])
 
-  def test_clean_jsonp_callback(self):
-    self.assertEqual(util.clean_jsonp_callback("CaseSensitive"),
-                     "CaseSensitive")
-    self.assertEqual(util.clean_jsonp_callback("numbers0123456789"),
-                     "numbers0123456789")
-    self.assertEqual(util.clean_jsonp_callback("d.o.t.s"),
-                     "d.o.t.s")
-    self.assertEqual(util.clean_jsonp_callback("brackets[9]"),
-                     "brackets[9]")
-    self.assertEqual(util.clean_jsonp_callback("_underscores_"),
-                     "_underscores_")
-    self.assertEqual(util.clean_jsonp_callback("cle!\"#%&/()=?@+;,:-*'aned"),
-                     "cleaned")
-    self.assertEqual(util.clean_jsonp_callback("+-*"), None)
-
 
 # We're going to import the rest of the test cases into the local
 # namespace so that we can run them as 

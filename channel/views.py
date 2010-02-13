@@ -266,13 +266,16 @@ def channel_history(request, nick, format='html'):
     return http.HttpResponse(t.render(c))
   elif format == 'json':
     t = loader.get_template('channel/templates/history.json')
-    return util.HttpJsonResponse(t.render(c), request)
+    r = util.HttpJsonResponse(t.render(c), request)
+    return r
   elif format == 'atom':
     t = loader.get_template('channel/templates/history.atom')
-    return util.HttpAtomResponse(t.render(c), request)
+    r = util.HttpAtomResponse(t.render(c), request)
+    return r
   elif format == 'rss':
     t = loader.get_template('channel/templates/history.rss')
-    return util.HttpRssResponse(t.render(c), request)
+    r = util.HttpRssResponse(t.render(c), request)
+    return r
 
 
 def channel_item(request, nick, item=None, format='html'):
@@ -336,7 +339,9 @@ def channel_item(request, nick, item=None, format='html'):
     return http.HttpResponse(t.render(c))
   elif format == 'json':
     t = loader.get_template('actor/templates/item.json')
-    return util.HttpJsonResponse(t.render(c), request)
+    r = http.HttpResponse(t.render(c))
+    r['Content-type'] = 'text/javascript'
+    return r
 
 
 def channel_browse(request, format='html'):
@@ -404,7 +409,6 @@ def channel_members(request, nick=None, format='html'):
 
   c = template.RequestContext(request, locals())
 
-  # TODO: Other output formats.
   if format == 'html':
     t = loader.get_template('channel/templates/members.html')
     return http.HttpResponse(t.render(c))

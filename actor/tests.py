@@ -16,8 +16,6 @@
 import Cookie
 import logging
 import os
-import re
-import simplejson
 import urllib
 
 from django.conf import settings
@@ -695,89 +693,3 @@ class ChannelsSideBarTest(ViewTestCase):
     r = self.login_and_get('celebrity', '/user/popular/overview')
     r = self.assertRedirectsPrefix(r, '/user')
     self._assert_popular_channel(r, "popular's channels")
-
-
-class JsonTest(ViewTestCase):
-  def test_json_contacts(self):
-    r = self.client.get('/user/popular/contacts/json')
-    self.assertEqual(r.status_code, 200)
-    j = simplejson.loads(r.content)
-    self.assertEqual(j['contact_count'], 2)
-    self.assertTemplateUsed(r, 'actor/templates/contacts.json')
-    self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_contacts_with_callback(self):
-    r = self.client.get('/user/popular/contacts/json',
-                        {'callback': 'callback'})
-    self.assertEqual(r.status_code, 200)
-    self.assertContains(r, '"contact_count": 2,', status_code=200)
-    self.failIf(not re.match('callback\(', r.content))
-    self.failIf(not re.search('\);$', r.content))
-    self.assertTemplateUsed(r, 'actor/templates/contacts.json')
-    self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_presence_item(self):
-    r = self.client.get('/user/popular/presence/12345/json')
-    self.assertEqual(r.status_code, 200)
-    j = simplejson.loads(r.content)
-    self.assertEqual(j['title'], "test entry 1")
-    self.assertTemplateUsed(r, 'actor/templates/item.json')
-    self.assertTemplateUsed(r, 'common/templates/stream.json')
-    self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_presence_item_with_callback(self):
-    r = self.client.get('/user/popular/presence/12345/json',
-                        {'callback': 'callback'})
-    self.assertEqual(r.status_code, 200)
-    self.assertContains(r, '"title": "test entry 1",', status_code=200)
-    self.failIf(not re.match('callback\(', r.content))
-    self.failIf(not re.search('\);$', r.content))
-    self.assertTemplateUsed(r, 'actor/templates/item.json')
-    self.assertTemplateUsed(r, 'common/templates/stream.json')
-    self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_history_feed(self):
-    urls = ['/user/popular/json', '/user/popular/feed/json']
-    for u in urls:
-      r = self.client.get(u)
-      self.assertEqual(r.status_code, 200)
-      j = simplejson.loads(r.content)
-      self.assertEqual(j['stream'][0]['comment_id'], "12348")
-      self.assertTemplateUsed(r, 'actor/templates/history.json')
-      self.assertTemplateUsed(r, 'common/templates/stream.json')
-      self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_history_feed_with_callback(self):
-    urls = ['/user/popular/json', '/user/popular/feed/json']
-    for u in urls:
-      r = self.client.get(u, {'callback': 'callback'})
-      self.assertEqual(r.status_code, 200)
-      self.assertContains(r, '"comment_id": "12348",', status_code=200)
-      self.failIf(not re.match('callback\(', r.content))
-      self.failIf(not re.search('\);$', r.content))
-      self.assertTemplateUsed(r, 'actor/templates/history.json')
-      self.assertTemplateUsed(r, 'common/templates/stream.json')
-      self.assertTemplateUsed(r, 'common/templates/user.json')
-
-  def test_json_contacts_feed(self):
-    urls = ['/user/popular/contacts/feed/json', '/user/popular/overview/json']
-    for u in urls:
-      r = self.login_and_get('popular', u)
-      self.assertEqual(r.status_code, 200)
-      j = simplejson.loads(r.content)
-      self.assertEqual(j['stream'][0]['comment_id'], "14341")
-      self.assertTemplateUsed(r, 'actor/templates/overview.json')
-      self.assertTemplateUsed(r, 'common/templates/stream.json')
-
-  def test_json_contacts_feed_with_callback(self):
-    urls = ['/user/popular/contacts/feed/json', '/user/popular/overview/json']
-    for u in urls:
-      r = self.login_and_get('popular', u, {'callback': 'callback'})
-      self.assertEqual(r.status_code, 200)
-      self.assertContains(r, '"comment_id": "14341",', status_code=200)
-      self.failIf(not re.match('callback\(', r.content))
-      self.failIf(not re.search('\);$', r.content))
-      self.assertTemplateUsed(r, 'actor/templates/overview.json')
-      self.assertTemplateUsed(r, 'common/templates/stream.json')
-      self.assertTemplateUsed(r, 'common/templates/user.json')
-
