@@ -160,16 +160,13 @@ def actor_history(request, nick=None, format='html'):
     return http.HttpResponse(t.render(c))
   elif format == 'json':
     t = loader.get_template('actor/templates/history.json')
-    r = util.HttpJsonResponse(t.render(c), request)
-    return r
+    return util.HttpJsonResponse(t.render(c), request)
   elif format == 'atom':
     t = loader.get_template('actor/templates/history.atom')
-    r = util.HttpAtomResponse(t.render(c), request)
-    return r
+    return util.HttpAtomResponse(t.render(c), request)
   elif format == 'rss':
     t = loader.get_template('actor/templates/history.rss')
-    r = util.HttpRssResponse(t.render(c), request)
-    return r
+    return util.HttpRssResponse(t.render(c), request)
 
 @decorator.login_required
 @alternate_nick
@@ -288,17 +285,14 @@ def actor_overview(request, nick, format='html'):
     return http.HttpResponse(t.render(c))
   elif format == 'json':
     t = loader.get_template('actor/templates/overview.json')
-    r = util.HttpJsonResponse(t.render(c), request)
-    return r
+    return util.HttpJsonResponse(t.render(c), request)
   elif format == 'atom':
     t = loader.get_template('actor/templates/overview.atom')
-    r = util.HttpAtomResponse(t.render(c), request)
-    return r
+    return util.HttpAtomResponse(t.render(c), request)
   elif format == 'rss':
     t = loader.get_template('actor/templates/overview.rss')
-    r = util.HttpRssResponse(t.render(c), request)
-    return r
-    
+    return util.HttpRssResponse(t.render(c), request)
+
 
 # The following section heavily commented for use in
 # http://code.google.com/p/jaikuengine/wiki/ControllerBestPractices
@@ -446,9 +440,7 @@ def actor_item(request, nick=None, item=None, format='html'):
 
   elif format == 'json':
     t = loader.get_template('actor/templates/item.json')
-    r = http.HttpResponse(t.render(c))
-    r['Content-type'] = 'text/javascript'
-    return r
+    return util.HttpJsonResponse(t.render(c), request)
 
 
 @alternate_nick
@@ -519,9 +511,7 @@ def actor_contacts(request, nick=None, format='html'):
     return http.HttpResponse(t.render(c))
   elif format == 'json':
     t = loader.get_template('actor/templates/contacts.json')
-    r = http.HttpResponse(t.render(c))
-    r['Content-type'] = 'text/javascript'
-    return r
+    return util.HttpJsonResponse(t.render(c), request)
 
 
 
@@ -578,6 +568,7 @@ def actor_followers(request, nick=None, format='html'):
 
   c = template.RequestContext(request, locals())
 
+  # TODO: Other output formats.
   if format == 'html':
     t = loader.get_template('actor/templates/followers.html')
     return http.HttpResponse(t.render(c))

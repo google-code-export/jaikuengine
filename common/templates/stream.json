@@ -1,5 +1,4 @@
-{% load format entry json %}
-  [
+{% load format entry json %}[
   {% for entry in entries %}
   {% if entry.entry %}
   {
@@ -33,4 +32,4 @@
   {% endifequal %}
   {% if not forloop.last %},{% endif %}
   {% endfor %}
-  ]
+]
