@@ -1,5 +1,4 @@
-{% load json %}
-{
+{% load json %}{
   "contact_count": {{actor_tiles_count|escapejson}},
   "contacts": [
   {% for actor_ref in actor_tiles %}

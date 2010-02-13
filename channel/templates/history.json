@@ -1,5 +1,4 @@
-{% load json %}
-{ 
+{% load json %}{
   "title": {% filter escapejson %}{{SITE_NAME}} | Latest from {{view.display_nick}}{% endfilter %},
   "url": {{view.url|escapejson}},
   {% with view as actor_ref %}

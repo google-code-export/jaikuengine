@@ -93,10 +93,41 @@ def HttpAtomResponse(content, request):
   return response
 
 def HttpJsonResponse(content, request):
+  """ Returns a JSON response
+
+  If there's a callback parameter in the URL ("?callback=function"), the
+  returned JSON will be wrapped like below:
+
+      callback_function(json_output);
+
+  Remember that brackets in the callback must be URL encoded:
+  "hello.world%5B5%5D".
+
+  """
+  content_type  = 'application/json'
+  if (request and request.method == 'GET'
+              and 'callback' in request.GET):
+    callback = clean_jsonp_callback(request.GET['callback'])
+    if callback:
+      content_type  = 'text/javascript'
+      content = "%s(%s);" % (callback, content)
+
   response = http.HttpResponse(content)
-  response['Content-type']  = 'text/javascript; charset=utf-8'
+  response['Content-type']  = "%s; charset=utf-8" % content_type
   return response
 
+def clean_jsonp_callback(callback):
+    """ Returns JSONP callback function name or None.
+
+    Callback function names can contain alphanumeric characters as well
+    as periods (.) and brackets ([ and ]), allowing names like "one.two[3]".
+
+    """
+    callback = re.sub('[^a-zA-Z0-9\._\[\]]', '', callback)
+    if len(callback) > 0:
+        return callback
+    else:
+        return None
 
 def hash_password(nick, password):
   return sha1(password)
