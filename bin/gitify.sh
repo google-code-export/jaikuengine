@@ -8,7 +8,7 @@ COMMIT_TRUNK=https://$SVN_TRUNK
 
 until [ -z "$1" ];
 do
-  if [ "$1" == "readonly" ]
+  if [[ "$1" == "readonly" ]]
   then
     READONLY=1
     COMMIT_TRUNK=$READONLY_TRUNK
@@ -58,8 +58,8 @@ cd $TARGET_DIR
 EXTERNALS=`git svn show-externals | grep "^/" | awk '{print $1}'`
 for ext in `echo $EXTERNALS`
 do
-  echo "  Linking ../$EXISTING_CHECKOUT$ext..."
-  ln -s ../$EXISTING_CHECKOUT$ext .$ext
+  echo "  Linking $EXISTING_CHECKOUT$ext..."
+  ln -s `dirname $PWD`/$EXISTING_CHECKOUT$ext .$ext
   echo "$ext" >> .gitignore
 done
 echo "Done."
