@@ -18,6 +18,7 @@ from common import api
 from common import exception
 from common import mail as common_mail
 from common import util
+from common.protocol import pshb
 from common.protocol import sms
 from common.protocol import xmpp
 from common.test import base
@@ -58,6 +59,8 @@ class NotificationTest(base.FixturesTestCase):
         api.ROOT, 'stream/girlfriend@example.com/presence/16961')
     self.channel_entry = api.entry_get(
         api.ROOT, 'stream/#popular@example.com/presence/13345')
+    self.pshb_endpoints = [x.target for x in api.pshb_get_firehoses(api.ROOT)
+                           if x.state == 'subscribed']
   
   def clear_outboxes(self):
     mail.outbox = []
@@ -182,6 +185,21 @@ class NotificationTest(base.FixturesTestCase):
     else:
       self.fail('Bad test, no email to check out of:\n%s' % '\n'.join(inboxes))
 
+  def check_pshb_for_entry(self, entry_ref):
+    if entry_ref.is_comment():
+      self.assertEqual(0, len(pshb.outbox), 'no pshb for comments')
+      return
+    if entry_ref.is_channel():
+      self.assertEqual(0, len(pshb.outbox), 'no pshb for channels (yet)')
+      return
+    owner_ref = api.actor_get(api.ROOT, entry_ref.owner)
+    feed_url = owner_ref.url('/atom')
+    check = set([(endpoint, (feed_url,)) for endpoint in self.pshb_endpoints])
+    if len(check) > 0:
+      self.assertSetEqual(check, set(pshb.outbox))
+    else:
+      self.fail('Bad test, no pshb to check')
+
   def test_public_to_own_public(self):
     """post by public user to own public stream
      who should see this:
@@ -203,6 +221,7 @@ class NotificationTest(base.FixturesTestCase):
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
   
   def test_contactsonly_to_own_contactsonly(self):
     """post by contacts-only user to own contacts-only stream
@@ -224,6 +243,7 @@ class NotificationTest(base.FixturesTestCase):
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
   
   def test_contactsonly_to_public_channel(self):
     """post by public user to public channel
@@ -249,6 +269,7 @@ class NotificationTest(base.FixturesTestCase):
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_public_to_public_channel(self):
     """post by contactsonly user to public channel
@@ -274,6 +295,7 @@ class NotificationTest(base.FixturesTestCase):
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_public_comment_to_own_public_entry(self):
     """comment by public user on own public entry
@@ -301,6 +323,7 @@ class NotificationTest(base.FixturesTestCase):
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_public_comment_to_other_public_entry(self):
     """comment by public user on other public user's entry
@@ -330,6 +353,7 @@ class NotificationTest(base.FixturesTestCase):
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_public_comment_to_contactsonly_entry(self):
     """comment by public user on contacts-only user's entry
@@ -364,6 +388,7 @@ he entry's restricted stream * overview
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_public_comment_to_own_public_channel_entry(self):
     """comment by public user on own public channel's entry
@@ -397,6 +422,7 @@ he entry's restricted stream * overview
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_public_comment_to_public_channel_entry(self):
     """comment by public user on public channel's entry
@@ -429,6 +455,7 @@ he entry's restricted stream * overview
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
   
   def test_contactsonly_comment_to_public_entry(self):
     """comment by contacts-only user on public user's entry
@@ -458,6 +485,7 @@ he entry's restricted stream * overview
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_contactsonly_comment_to_own_contactsonly_entry(self):
     """comment by contacts-only user on own contacts-only user's entry
@@ -484,6 +512,7 @@ he entry's restricted stream * overview
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_contactsonly_comment_to_other_contactsonly_entry(self):
     """comment by contacts-only user on other contacts-only user's entry
@@ -513,6 +542,7 @@ he entry's restricted stream * overview
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 
   def test_contactsonly_comment_to_public_channel_entry(self):
     """comment by contacts-only user on public channel's entry
@@ -545,4 +575,5 @@ he entry's restricted stream * overview
     self.check_inboxes_for_entry(entry_ref, subscriptions)
     self.check_email_for_inboxes(entry_ref, subscriptions)
     self.check_im_for_inboxes(entry_ref, subscriptions)
+    self.check_pshb_for_entry(entry_ref)
 

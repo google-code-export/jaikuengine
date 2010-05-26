@@ -55,6 +55,7 @@ from common import properties
 from common import throttle
 from common import util
 from common import validate
+from common.protocol import pshb
 from common.protocol import sms
 from common.protocol import xmpp
 
@@ -2901,6 +2902,22 @@ def presence_set(api_user, nick, **kw):
 #######
 #######
 
+@admin_required
+def pshb_get_firehoses(api_user):
+  """Get the list of PubSubHubBub firehoses
+  
+  We expect this to be a smallish number so we aren't supporting any limits.
+
+  We represent firehoses as Subscriptions to a firehose.
+  """
+  topic = 'firehose/pshb'
+  query = Subscription.gql('WHERE topic = :1', topic)
+  return list(query)
+
+#######
+#######
+#######
+
 @owner_required
 def task_create(api_user, nick, action, action_id, args=None, kw=None, 
                 progress=None, expire=None):
@@ -3887,7 +3904,7 @@ class AddEntryNotify(Goal):
   stage = None
   notification_type = None
 
-  def __call__(self, grind=True):
+  def __call__(self):
     # We'll need to get a reference to the entry that has already been created
     entry_keyname = StreamEntry.key_from(**self.new_values)
     new_entry_ref = entry_get(ROOT, entry_keyname)
@@ -3899,7 +3916,7 @@ class AddEntryNotify(Goal):
       follower_inboxes = initial_inboxes + follower_inboxes
 
     last_inbox = None
-    if follower_inboxes:
+    if follower_inboxes and len(follower_inboxes) > 1:
       last_inbox = follower_inboxes[-1]
     
     self.bump(next_progress=last_inbox)
@@ -3908,14 +3925,15 @@ class AddEntryNotify(Goal):
 
   def notify(self, follower_inboxes, new_entry_ref):
     # perform the notifications
-    _notify_subscribers_for_entry_by_type(self.notification_type,
-                                          follower_inboxes,
-                                          self.actor_ref,
-                                          self.new_stream_ref,
-                                          new_entry_ref,
-                                          entry_ref=self.entry_ref,
-                                          entry_stream_ref=self.entry_stream_ref
-                                          )
+    _notify_subscribers_for_entry_by_type(
+        self.notification_type,
+        follower_inboxes,
+        self.actor_ref,
+        self.new_stream_ref,
+        new_entry_ref,
+        entry_ref=self.entry_ref,
+        entry_stream_ref=self.entry_stream_ref
+        )
 
     return new_entry_ref
 
@@ -3963,10 +3981,72 @@ class AddEntryNotifyEmail(AddEntryNotify):
     
     return initial_inboxes, follower_inboxes
 
+class AddEntryFirehose(Goal):
+  """Base class for Add Entry Firehouse Goals"""
+  def __call__(self):
+    # We'll need to get a reference to the entry that has already been created
+    entry_keyname = StreamEntry.key_from(**self.new_values)
+    new_entry_ref = entry_get(ROOT, entry_keyname)
+    
+    # Firehose never applies to private entries
+    if ((new_entry_ref.is_comment()
+         and self.entry_stream_ref.is_restricted())
+        or (new_entry_ref.is_comment()
+            and self.new_stream_ref.is_restricted())):
+      self.bump()
+      return
+  
+    initial_endpoints, all_endpoints = self.get_endpoints(new_entry_ref)
+
+    # The first time through we'll want to include the initial endpoints, too
+    if not self.stage_progress:
+      all_endpoints = initial_endpoints + all_endpoints
+
+    last_endpoint = None
+    if all_endpoints and len(all_endpoints) > 1:
+      last_endpoint = all_endpoints[-1]
+    
+    self.bump(next_progress=last_endpoint)
+  
+    self.notify(all_endpoints, new_entry_ref)
+
+  def get_endpoints(self, new_entry_ref):
+    raise NotImplementedError()
+
+  def notify(self, endpoints, new_entry_ref):
+    raise NotImplementedError()
+
+class AddEntryFirehosePshb(AddEntryFirehose):
+  stage = "firehose_pshb"
+
+  def get_endpoints(self, new_entry_ref):
+    if new_entry_ref.is_comment() or new_entry_ref.is_channel():
+      return [], []
+    firehoses_ref = pshb_get_firehoses(ROOT)
+    return [], [x.target for x in firehoses_ref if x.state == 'subscribed']
+
+  def notify(self, endpoints, new_entry_ref):
+    # Get the feed for this user
+    # TODO(termie): when we support multiple streams per user me might want
+    #               to make this point at that specific feed
+    feed_url = self.actor_ref.url('/atom')
+    
+    rpcs = []
+    for endpoint in endpoints:
+      pshb_connection = pshb.PshbConnection(endpoint)
+      rpcs.append(pshb_connection.publish_async((feed_url,)))
+
+    for rpc in rpcs:
+      try:
+        rpc.get_result()
+      except exception.Error:
+        exception.log_exception()
+    
 class AddEntryTaskSpec(TaskSpec):
   stages = [AddEntryInitial,
             AddEntryInboxes,
             AddEntryNotifyIm,
+            AddEntryFirehosePshb,
             AddEntryNotifySms,
             AddEntryNotifyEmail,
             EndGoal

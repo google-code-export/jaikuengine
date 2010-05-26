@@ -180,5 +180,13 @@
              "state": "subscribed",
              "target": "inbox/boyfriend@example.com/overview"
              }
+  },
+ {"pk": "firehose/pshb/http://example.com/pshb",
+  "model": "common.subscription",
+  "fields": {"topic": "firehose/pshb",
+             "subscriber": "root@example.com",
+             "state": "subscribed",
+             "target": "http://example.com/pshb"
+             }
   }
 ]

@@ -28,6 +28,7 @@ from common import memcache
 from common import megamox
 from common import profile
 from common import util
+from common.protocol import pshb
 from common.protocol import sms
 from common.protocol import xmpp
 from common.test import util as test_util
@@ -67,6 +68,9 @@ class FixturesTestCase(test.TestCase):
 
     sms.SmsConnection = test_util.TestSmsConnection
     sms.outbox = []
+
+    pshb.PshbConnection = test_util.TestPshbConnection
+    pshb.outbox = []
 
     memcache.client = test_util.FakeMemcache()
 

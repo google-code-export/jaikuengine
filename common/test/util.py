@@ -33,6 +33,7 @@ from django.test import client
 from common import api
 from common import clock
 from common import exception
+from common.protocol import pshb
 from common.protocol import sms
 from common.protocol import xmpp
 
@@ -74,7 +75,8 @@ def exhaust_queue_any():
       l.reset()
       queue_stub.DeleteTask('default', task['name'])
     except Exception:
-      logging.exception('Woops!')
+      #logging.exception('Woops!')
+      raise
 
     tasks = queue_stub.GetTasks('default')
 
@@ -90,6 +92,20 @@ class TestXmppConnection(xmpp.XmppConnection):
 
     for jid in to_jid_list:
       xmpp.outbox.append((jid, message, html_message))
+
+class _TestPshbRpc(object):
+  def __init__(self, endpoint, urls):
+    self.endpoint = endpoint
+    self.urls = urls
+
+  def get_result(self):
+    logging.debug('pshb.publish(%s, %s)', self.endpoint, self.urls)
+    pshb.outbox.append((self.endpoint, self.urls))
+    return
+
+class TestPshbConnection(pshb.PshbConnection):
+  def publish_async(self, urls):
+    return _TestPshbRpc(self.endpoint, urls) 
 
 class TestSmsConnection(sms.SmsConnection):
   def send_message(self, to_list, message):
