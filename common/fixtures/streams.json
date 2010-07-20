@@ -227,5 +227,15 @@
              "read": 3,
              "write": 2
              }
+  },
+ {"pk": "stream/#support@example.com/presence",
+  "model": "common.stream",
+  "fields": {"title": "#support channel",
+             "owner": "#support@example.com",
+             "type": "presence",
+             "slug": "presence",
+             "read": 2,
+             "write": 2
+             }
   }
 ]

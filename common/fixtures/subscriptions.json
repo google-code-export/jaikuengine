@@ -157,6 +157,14 @@
              "target": "inbox/unpopular@example.com/overview"
              }
   },
+  {"pk": "stream/#support@example.com/presence/inbox/root@example.com/overview",
+  "model": "common.subscription",
+  "fields": {"topic": "stream/#support@example.com/presence",
+             "subscriber": "root@example.com",
+             "state": "subscribed",
+             "target": "inbox/root@example.com/overview"
+             }
+  },
  {"pk": "stream/root@example.com/comments/inbox/celebrity@example.com/overview",
   "model": "common.subscription",
   "fields": {"topic": "stream/root@example.com/comments",

@@ -157,6 +157,20 @@
                        }
              }
   },
+   {"pk": "actor/#support@example.com", 
+  "model": "common.actor", 
+  "fields": {"nick": "#support@example.com", 
+             "normalized_nick": "#support@example.com",
+             "password": "",
+             "privacy": 3,
+             "type": "channel",
+             "extra": {"member_count": 1,
+                       "admin_count": 1,
+                       "description": "the support channel",
+                       "icon": "default/animal_3"
+                       }
+             }
+  },
  {"pk": "actor/CapitalPunishment@example.com", 
   "model": "common.actor", 
   "fields": {"nick": "CapitalPunishment@example.com",

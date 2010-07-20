@@ -26,6 +26,20 @@
              "relation": "contact"
              }
   },
+ {"pk": "relation/contact/root@example.com/celebrity@example.com",
+  "model": "common.Relation",
+  "fields": {"owner": "root@example.com",
+             "target": "celebrity@example.com",
+             "relation": "contact"
+             }
+  },
+   {"pk": "relation/contact/root@example.com/popular@example.com",
+  "model": "common.Relation",
+  "fields": {"owner": "root@example.com",
+             "target": "popular@example.com",
+             "relation": "contact"
+             }
+  },
  {"pk": "relation/contact/annoying@example.com/obligated@example.com",
   "model": "common.Relation",
   "fields": {"owner": "annoying@example.com",
@@ -157,6 +171,20 @@
   "fields": {"owner": "girlfriend@example.com",
              "target": "otherboyfriend@example.com",
              "relation": "contact"
+             }
+  },
+ {"pk": "relation/channeladmin/#support@example.com/root@example.com",
+  "model": "common.Relation",
+  "fields": {"owner": "#support@example.com",
+             "target": "root@example.com",
+             "relation": "channeladmin"
+             }
+  },
+ {"pk": "relation/channelmember/#support@example.com/root@example.com",
+  "model": "common.Relation",
+  "fields": {"owner": "#support@example.com",
+             "target": "root@example.com",
+             "relation": "channelmember"
              }
   },
  {"pk": "relation/channeladmin/#popular@example.com/popular@example.com",
