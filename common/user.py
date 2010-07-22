@@ -14,6 +14,7 @@
 
 import datetime
 import logging
+import time
 
 from django.conf import settings
 from django.core.cache import cache
@@ -143,11 +144,16 @@ def lookup_user_by_login(login, password):
 
 
 def set_user_cookie(response, user, remember=False):
+  # We set max-age (because that's what HTTP 1.1 requires
+  # We set expires because IE6/IE7/IE8 don't support max-age
+  # We set both to be safe. 
   if remember:
     two_weeks = datetime.datetime.utcnow() + datetime.timedelta(days=14)
     expires = two_weeks.strftime("%a, %d-%b-%y %H:%M:%S GMT")
+    max_age_delta = 14 * (60 * 60 * 24)
   else:
     expires = None
+    max_age_delta = None
 
   auth_token = generate_user_auth_token(user.nick, user.password)
 
@@ -155,22 +161,26 @@ def set_user_cookie(response, user, remember=False):
     response.set_cookie(settings.USER_COOKIE, 
                         user.nick, 
                         expires=expires, 
-                        path=settings.COOKIE_PATH)
+                        path=settings.COOKIE_PATH,
+                        max_age=max_age_delta)
     response.set_cookie(settings.PASSWORD_COOKIE,
                         auth_token, 
                         expires=expires, 
-                        path=settings.COOKIE_PATH)
+                        path=settings.COOKIE_PATH,
+                        max_age=max_age_delta)
   else:
     response.set_cookie(settings.USER_COOKIE, 
                         user.nick, 
                         expires=expires, 
                         path=settings.COOKIE_PATH, 
-                        domain=settings.COOKIE_DOMAIN)
+                        domain=settings.COOKIE_DOMAIN,
+                        max_age=max_age_delta)
     response.set_cookie(settings.PASSWORD_COOKIE, 
                         auth_token, 
                         expires=expires, 
                         path=settings.COOKIE_PATH, 
-                        domain=settings.COOKIE_DOMAIN)
+                        domain=settings.COOKIE_DOMAIN,
+                        max_age=max_age_delta)
 
   return response
 

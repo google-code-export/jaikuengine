@@ -504,10 +504,21 @@ class SettingsTest(ViewTestCase):
         },
     )
     r = self.assertRedirectsPrefix(r, '/logout')
-    
-    # TODO(tyler): Add a test that the user cannot log back in!
-      
 
+  def test_settings_delete_prevents_login(self):
+    r = self.login_and_get(
+        'popular', 
+        '/user/popular/settings/delete',
+        {
+          '_nonce' : util.create_nonce('popular', 'actor_remove'),
+          'actor_remove' : '',
+          'nick' : 'popular',
+        },
+    )
+    r = self.assertRedirectsPrefix(r, '/logout')
+
+    r = self.client.post('/login', {'log': 'popular', 'pwd': 'popular'})
+    self.assert_error_contains(r, 'Invalid username')
 
   def test_settings_upload_avatar(self):
     nick = 'obligated'
