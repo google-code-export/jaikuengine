@@ -6,7 +6,7 @@
     {% with entries|first as first_entry %} 
     <updated>{{first_entry.created_at|date:"Y-m-d\TH:i:s\Z"}}</updated>
     {% endwith %}
-    <logo>http://{{DOMAIN}}/themes/{{DEFAULT_THEME|urlencode}}/logo.gif</logo>
+    <logo>http://{{DOMAIN}}/themes/{{DEFAULT_THEME|urlencode}}/logo.png</logo>
     <id>tag:{{NS_DOMAIN}},{% now "Y-m-d"%}:/</id>
     <rights>Copyright 2009 {{SITE_NAME}}</rights>
     {% include 'common/templates/stream.atom' %}

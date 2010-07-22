@@ -11,7 +11,7 @@
     {% endwith %}        
     <image>
       <link>http://{{DOMAIN}}</link>
-      <url>http://{{DOMAIN}}/themes/{{DEFAULT_THEME|urlencode}}/logo.gif</url>
+      <url>http://{{DOMAIN}}/themes/{{DEFAULT_THEME|urlencode}}/logo.png</url>
       <title>{{SITE_NAME}}</title>
     </image>
     {% include 'common/templates/stream.rss' %}
