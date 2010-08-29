@@ -81,6 +81,7 @@ from common.test.patterns import *
 from common.test.queue import *
 from common.test.sms import *
 from common.test.throttle import *
+from common.test.user import *
 from common.test.validate import *
 from common.templatetags.test.avatar import *
 from common.templatetags.test.format import *
