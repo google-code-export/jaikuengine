@@ -1,8 +1,9 @@
 {% load vcard %}
+{% load format %}
 <div id="channels" class='contacts'>
   {% ifequal request.user.nick view.nick %}
     <h2>Channels ({{ channels_count }})</h2>
-    <a href="{% url channel.views.channel_index %}" class="edit">Manage</a>
+  <a href="{% url_for DOMAIN request %}/channel" class="edit">Manage</a>
   {% else %}
     <h2>{{view.display_nick}}'s channels ({{channels_count}})</h2>
   {% endifequal %}
@@ -21,7 +22,7 @@
     {% if channels_more %}
       {% ifequal request.user.nick view.nick %}
       <p class="more">
-        <a href="{% url channel.views.channel_index %}">&#8250; More</a>
+        <a href="{% url_for DOMAIN request %}/channel">&#8250; More</a>
       </p>
       {% endifequal %}
     {% endif %}
@@ -30,7 +31,7 @@
     No channels yet.
     {% ifequal request.user.nick view.nick %}
     You can start by 
-    <a href="{% url channel.views.channel_browse %}">joining some channels</a>.
+    <a href="{% url_for DOMAIN request %}/channel/browse">joining some channels</a>.
     {% endifequal %}
     </p>    
   {% endif %}
