@@ -601,11 +601,6 @@ class SettingsTest(ViewTestCase):
     self.assertContains(r, 'Change Design')
     self.assertTemplateUsed(r, 'actor/templates/settings_design.html')
 
-  def test_settings_badge(self):
-    r = self.login_and_get('popular', '/user/popular/settings/badge')
-    self.assertContains(r, 'badge')
-    self.assertTemplateUsed(r, 'actor/templates/settings_badge.html')
-
   def test_settings_notifications(self):
     r = self.login_and_get('popular', '/user/popular/settings/notifications')
     self.assertContains(r, 'notifications')

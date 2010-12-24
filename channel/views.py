@@ -444,26 +444,6 @@ def channel_settings(request, nick, page='index'):
 
   if page == 'index':
     pass
-  elif page == 'badge':
-    badges = [{'id': 'badge-stream',
-               'width': '200',
-               'height': '300',
-               'src': '/themes/%s/badge.swf' % settings.DEFAULT_THEME,
-               'title': 'Stream',
-               },
-              {'id': 'badge-map',
-               'width': '200',
-               'height': '255',
-               'src': '/themes/%s/badge-map.swf' % settings.DEFAULT_THEME,
-               'title': 'Map',
-               },
-              {'id': 'badge-simple',
-               'width': '200',
-               'height': '200',
-               'src': '/themes/%s/badge-simple.swf' % settings.DEFAULT_THEME,
-               'title': 'Simple',
-               },
-              ]
   elif page == 'delete':
     pass
   elif page == 'design':

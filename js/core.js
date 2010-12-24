@@ -573,10 +573,6 @@ $(document).ready(function() {
       $("a#select-all").toggleSelection("input[@name='actor[]'], input[@name='email[]']", true);
       $("a#select-none").toggleSelection("input[@name='actor[]'], input[@name='email[]']", false);
     }
-    
-    if (body.id == "settings" && $("ul#badges").length) {
-      initBadges();
-    }    
 
     // Delete confirmation links
     $("input#only-channel, input#only-user").toggleCheckbox();

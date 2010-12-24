@@ -134,14 +134,6 @@ if settings.BLOG_ENABLED:
      ),
   )
 
-# BADGES
-urlpatterns += patterns('',
-    (r'^badge/(?P<format>image|js-small|js-medium|js-large|json|xml)/(?P<nick>\w+)$', 'badge.views.badge_badge'),
-    (r'^user/(?P<nick>\w+)/feed/badge$', 'actor.views.actor_history', {'format': 'rss'}),
-    (r'^channel/(?P<nick>\w+)/feed/badge$', 'channel.views.channel_history', {'format': 'rss'}),
-)
-
-
 # COMMON
 urlpatterns += patterns('common.views',
     (r'^error$', 'common_error'),

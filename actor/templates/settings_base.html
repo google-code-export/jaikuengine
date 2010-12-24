@@ -70,11 +70,6 @@
       <li{% ifequal page "design" %} class="current"{% endifequal %}>
         <a href="{{view.url}}/settings/design">Look and feel</a>
       </li>
-      {% if BADGES_ENABLED %}
-        <li{% ifequal page "badge" %} class="current"{% endifequal %}>
-          <a href="{{view.url}}/settings/badge">Badges</a>
-        </li>
-      {% endif %}
     </ul>
   {% endif %}
 {% endblock %}

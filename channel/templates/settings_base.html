@@ -20,11 +20,6 @@
       <a href="{{view.url}}/settings/design">Presentation</a>
     </li>
   {% endif %}
-  {% if not request.mobile and BADGES_ENABLED %}
-    <li{% ifequal page "badge" %} class="current"{% endifequal %}>
-      <a href="{{view.url}}/settings/badge">Badges</a>
-    </li>
-  {% endif %}
   <li{% ifequal page "delete" %} class="current"{% endifequal %}>
     <a href="{% url_for view request %}/settings/delete">Delete channel</a>
   </li>
