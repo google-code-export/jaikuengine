@@ -32,11 +32,9 @@ register = template.Library()
 
 link_regex = re.compile(r'\[([^\]]+)\]\((http[^\)]+)\)')
 
-r'(^|\s|>)([A-Za-z][A-Za-z0-9+.-]{1,120}:[A-Za-z0-9/](([A-Za-z0-9$_.+!*,;/?:@&~=-])|%[A-Fa-f0-9]{2}){1,333}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*,;/?:@&~=%-]{0,1000}))?)'
-
 # lifted largely from: 
 # http://www.manamplified.org/archives/2006/10/url-regex-pattern.html
-autolink_regex = re.compile(r'(^|\s|>)([A-Za-z][A-Za-z0-9+.-]{1,120}:[A-Za-z0-9/](([A-Za-z0-9$_.+!*,;/?:@&~=-])|%[A-Fa-f0-9]{2}){1,333}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*,;/?:@&~=%-]{0,1000}))?)')
+autolink_regex = re.compile(r'(^|\s|>)((http|https):[A-Za-z0-9/](([A-Za-z0-9$_.+!*,;/?:@&~=-])|%[A-Fa-f0-9]{2}){1,333}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*,;/?:@&~=%-]{0,1000}))?)')
 bold_regex = re.compile(r'\*([^*]+)\*')
 italic_regex = re.compile(r'_([^_]+)_')
 
