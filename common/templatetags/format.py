@@ -34,6 +34,7 @@ link_regex = re.compile(r'\[([^\]]+)\]\((http[^\)]+)\)')
 
 # lifted largely from: 
 # http://www.manamplified.org/archives/2006/10/url-regex-pattern.html
+# Tweaked to restrict valid URLs to those that start with http or https
 autolink_regex = re.compile(r'(^|\s|>)((http|https):[A-Za-z0-9/](([A-Za-z0-9$_.+!*,;/?:@&~=-])|%[A-Fa-f0-9]{2}){1,333}(#([a-zA-Z0-9][a-zA-Z0-9$_.+!*,;/?:@&~=%-]{0,1000}))?)')
 bold_regex = re.compile(r'\*([^*]+)\*')
 italic_regex = re.compile(r'_([^_]+)_')
