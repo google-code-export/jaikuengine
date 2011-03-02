@@ -23,6 +23,7 @@ import simplejson
 from common.display import prep_stream_dict, prep_entry_list, prep_entry, prep_comment_list, DEFAULT_AVATARS
 
 from common import api
+from common import clean
 from common import component
 from common import exception
 from common import decorator
@@ -41,7 +42,7 @@ def join_join(request):
   if request.user:
     raise exception.AlreadyLoggedInException()
 
-  redirect_to = request.REQUEST.get('redirect_to', '/')
+  redirect_to = get_clean_redirect(request)
 
   # get the submitted vars
   nick = request.REQUEST.get('nick', '')
@@ -107,7 +108,7 @@ def join_join(request):
 
 @decorator.login_required
 def join_welcome(request):
-  redirect_to = request.REQUEST.get('redirect_to', '/')
+  redirect_to = get_clean_redirect(request)
   next = '/welcome/1'
 
   view = request.user
@@ -121,8 +122,8 @@ def join_welcome(request):
 
 @decorator.login_required
 def join_welcome_photo(request):
+  redirect_to = get_clean_redirect(request)
   next = '/welcome/2'
-  redirect_to = request.REQUEST.get('redirect_to', '/')
 
   # Welcome pages have a 'Continue' button that should always lead
   # to the next page. 
@@ -153,7 +154,7 @@ def join_welcome_photo(request):
 
 @decorator.login_required
 def join_welcome_mobile(request):
-  redirect_to = request.REQUEST.get('redirect_to', '/')
+  redirect_to = get_clean_redirect(request)
   next = '/welcome/3'
   
 
@@ -189,7 +190,7 @@ def join_welcome_contacts(request):
     else
       show the page
   """
-  redirect_to = request.REQUEST.get('redirect_to', '/')
+  redirect_to = get_clean_redirect(request)
   next = '/welcome/done'
 
 
@@ -324,7 +325,7 @@ def join_welcome_contacts(request):
   return http.HttpResponse(t.render(c))
 
 def join_welcome_done(request):
-  redirect_to = request.REQUEST.get('redirect_to', '/')
+  redirect_to = get_clean_redirect(request)
 
   # set the progress
   welcome_photo = True
@@ -339,3 +340,8 @@ def join_welcome_done(request):
   
   t = loader.get_template('join/templates/welcome_%s.html' % page)
   return http.HttpResponse(t.render(c))
+
+def get_clean_redirect(request):
+  redirect_to = request.REQUEST.get('redirect_to', '/')
+  redirect_to = clean.redirect_to(redirect_to)
+  return redirect_to
